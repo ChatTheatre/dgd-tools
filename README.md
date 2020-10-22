@@ -1,28 +1,40 @@
 # DidGood
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/DidGood`. To experiment with that code, run `bin/console` for an interactive prompt.
+DidGood is an experimental library system for [DGD](https://github.com/dworkin/LPC), an interpreter for a dialect of LPC, the C-like language of LPMuds. I don't actually know of a second attempt to set up a library system for it. DidGood is inspired loosely by RubyGems and the Ruby [Bundler](https://bundler.io).
 
-TODO: Delete this and the text above, and describe your gem
+DidGood refers to its libraries as Goods. The file dgd.didgood, if it's present in your application's directory, specifies where and how to find its various libraries. By running "didgood install", you can install those various files into a complete application.
+
+DidGood is a simple initial library system. I'm sure I'll figure more out as I go along, and I'm sure it'll need changes. But you have to start somewhere!
+
+This work has grown out of [SkotOS and ChatTheatre](https://github.com/ChatTheatre) tasks.
+
+DidGood requires Ruby. It comes preinstalled on recent Mac computers, or you can install it yourself on Linux. On Windows, if you're not using WSL or similar, you're going to have a less-than-optimal experience.
 
 ## Installation
 
-Add this line to your application's Gemfile:
+You would normally install DidGood directly: `gem install didgood`.
 
-```ruby
-gem 'DidGood'
-```
-
-And then execute:
-
-    $ bundle install
-
-Or install it yourself as:
-
-    $ gem install DidGood
+It's possible to add it to a Ruby's application's Gemfile. Ordinarily you wouldn't.
 
 ## Usage
 
-TODO: Write usage instructions here
+If you have a DGD application that uses didgood, run `didgood install` to download its dependencies and create a fully-assembled DGD directory for it.
+
+## Using DidGood with your DGD Application
+
+DidGood needs you to specify a few things about each library you want to use. The easiest way to do that is with a library file (copied locally) or URL for downloading it - you can use a raw GitHub URL for this, for instance.
+
+## Creating the Goods
+
+To create a new DidGood-usable library, you'll want to create a Goods file for it.
+
+## Design Notes on Libraries
+
+The Kernel Library allows changing some config settings, including the name of the "/usr" dir. Consider some other name? Should definitely decide which direction to set "persistent" and stick with it.
+
+Having admin users exist as library-ettes next to libraries seems highly dubious. But to avoid it, there would need to be a whole other permissions system sitting on top of the Kernel Library (like SkotOS, but more so.)
+
+
 
 ## Development
 
