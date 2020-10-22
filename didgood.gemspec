@@ -8,7 +8,7 @@ Gem::Specification.new do |spec|
 
   spec.summary       = %q{DidGood is an experimental library and packaging system for the DGD language.}
   spec.description   = spec.summary
-  spec.homepage      = "https://github.com/ChatTheatre/didgood"
+  spec.homepage      = "https://github.com/noahgibbs/didgood"
   spec.license       = "AGPL"
   spec.required_ruby_version = Gem::Requirement.new(">= 2.3.0")
 
