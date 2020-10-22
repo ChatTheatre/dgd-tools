@@ -1,6 +1,6 @@
 # DidGood
 
-DidGood is an experimental library system for [DGD](https://github.com/dworkin/LPC), an interpreter for a dialect of LPC, the C-like language of LPMuds. I don't actually know of a second attempt to set up a library system for it. DidGood is inspired loosely by RubyGems and the Ruby [Bundler](https://bundler.io).
+DidGood is an experimental library system for [DGD](https://github.com/dworkin/LPC). DGD is an interpreter for a dialect of LPC, the C-like language of LPMuds. I don't actually know of a second attempt to set up a library system for it. DidGood is inspired loosely by RubyGems and the Ruby [Bundler](https://bundler.io).
 
 DidGood refers to its libraries as Goods. The file dgd.didgood, if it's present in your application's directory, specifies where and how to find its various libraries. By running "didgood install", you can install those various files into a complete application.
 

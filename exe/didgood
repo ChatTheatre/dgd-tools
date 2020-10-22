@@ -1,0 +1,16 @@
+#!/usr/bin/env ruby
+
+require "didgood"
+
+if ARGV.size == 0
+    ARGV.push "install"
+end
+
+case ARGV[0]
+when "install"
+    puts "Running didgood installer..."
+when "work"
+    puts "Starting DGD server... (not yet)"
+default
+    raise "Unrecognised didgood command: #{ARGV[0].inspect}!"
+end
