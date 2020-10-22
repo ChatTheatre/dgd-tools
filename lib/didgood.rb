@@ -173,9 +173,7 @@ CONTENTS
             raise("No such dgd.didgood file as #{path.inspect}!") unless File.exist?(path)
             contents = JSON.load(File.read(path))
 
-            raise "Expected a top-level JSON array in dgd.didgood!" unless contents.is_a?(Array)
-
-            @specs = contents.flat_map { |item| json_to_specs(item) }
+            read_didgood_file(contents)
 
             paths = @specs.flat_map { |s| s.paths }
             unless paths == paths.uniq
@@ -201,30 +199,30 @@ CONTENTS
             nil
         end
 
-        def json_to_specs(item)
-            raise "Expected every spec to be a JSON object, not #{item.inspect}!" unless item.is_a?(Hash)
-            return [] if item.size == 0 || item.all? { |k, v| k == "" }
+        def read_didgood_file(contents)
+            raise "Expected a top-level JSON object in dgd.didgood!" unless contents.is_a?(Hash)
 
-            if item["unbundled_goods"]
-                raise "Unbundled_goods must have only one key!" unless item.size == 1
+            @specs = []
 
-                return [unbundled_json_to_spec(item["unbundled_goods"])]
+            if contents["unbundled_goods"]
+                raise "Unbundled_goods must be an array!" unless contents["unbundled_goods"].is_a?(Array)
+
+                @specs += contents["unbundled_goods"].map { |item| unbundled_json_to_spec(item) }
             end
 
-            # A string-to-string mapping means a list of names and Goods URLs
-            if item.is_a?(Hash) && item.all? { |k, v| k.is_a?(String) && v.is_a?(String) }
-                return item.map do |name, goods_url|
+            if contents["goods"]
+                raise "Goods must be an array!" unless contents["goods"].is_a?(Array)
+
+                @specs += contents["goods"].map do |goods_url|
                     begin
-                        contents = JSON.parse(URI.open(goods_url).read)
+                        json_contents = JSON.parse(URI.open(goods_url).read)
                     rescue
                         STDERR.puts "Error reading or parsing by URL: #{goods_url.inspect}"
                         raise
                     end
-                    unbundled_json_to_spec(contents)
+                    unbundled_json_to_spec(json_contents)
                 end
             end
-
-            raise "Didn't recognize JSON objects as Goods specs in dgd.didgood!"
         end
 
         def unbundled_json_to_spec(fields)

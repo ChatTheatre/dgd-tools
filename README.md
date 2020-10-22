@@ -22,21 +22,63 @@ If you have a DGD application that uses didgood, run `didgood install` to downlo
 
 ## Using DidGood with your DGD Application
 
-DidGood needs a .goods file for each library you intend to use, or it needs the information that would normally have been in that .goods file. DidGood keeps its various settings in JSON.
+Your app will need a dgd.didgood file, which is a lot like NPM's package.json file.
 
+Here's an example:
 
+```
+{
+    "name": "eOS",
+    "version": "1.0.0",
+    "description": "A game platform from the folks at ChatTheatre",
+    "app": "app",
+    "goods": [
+        "https://raw.githubusercontent.com/noahgibbs/DidGood/main/goods/skotos_httpd.goods"
+    ],
+    "unbundled_goods": [
+        {
+            "name": "kernellib",
+            "git": {
+                "url": "https://github.com/dworkin/cloud-server.git",
+                "branch": "master"
+            },
+            "paths": {
+                "src/doc/kernel": "doc/kernel",
+                "src/include/kernel": "include/kernel",
+                "src/kernel": "kernel"
+            }
+        }
+    ]
+}
+```
+
+DidGood needs a .goods file for each of your dependencies - or it needs the equivalent of that .goods file, in the form of unbundled_goods. That one line in "goods" is basically the same information in unbundled_goods, just stored at a URL that DidGood can download for you.
+
+A DidGood-enabled DGD codebase can provide Goods files directly and you can use them by their URLs. A non-DidGood codebase may require you to create your own .goods files, or use them directly and unbundled in the dgd.didgood file for your app.
 
 ## Creating the Goods
 
 To create a new DidGood-usable library, you'll want to create a Goods file for it.
+
+Here's what those look like:
+
+```
+{
+    "name": "SkotOS HTTPD",
+    "git": {
+        "url": "https://github.com/ChatTheatre/SkotOS.git"
+    },
+    "paths": {
+        "skoot/usr/HTTP": "usr/HTTP"
+    }
+}
+```
 
 ## Design Notes on Libraries
 
 The Kernel Library allows changing some config settings, including the name of the "/usr" dir. Consider some other name? Should definitely decide which direction to set "persistent" and stick with it.
 
 Having admin users exist as library-ettes next to libraries seems highly dubious. But to avoid it, there would need to be a whole other permissions system sitting on top of the Kernel Library (like SkotOS, but more so.)
-
-
 
 ## Development
 
