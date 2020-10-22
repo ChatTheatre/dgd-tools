@@ -9,7 +9,7 @@ module DidGood
 
     DGD_BUILD_COMMAND = %(make DEFINES='-DUINDEX_TYPE="unsigned int" -DUINDEX_MAX=UINT_MAX -DEINDEX_TYPE="unsigned short" -DEINDEX_MAX=USHRT_MAX -DSSIZET_TYPE="unsigned int" -DSSIZET_MAX=1048576' install
 )
-    KERNEL_PATHS = ["/include/kernel", "/kernel"]
+    KERNEL_PATHS = ["include/kernel", "kernel"]
     DEFAULT_KERNELLIB_URL = "https://github.com/ChatTheatre/kernellib"
 
     GENERATED_ROOT = ".root"
@@ -76,7 +76,9 @@ module DidGood
                 spec.paths.each do |from, to|
                     from_path = "#{git_repo.local_dir}/#{from}"
                     to_path = "#{dgd_root}/#{to}"
-                    FileUtils.mkdir_p to_path
+                    to_dir = to_path.split("/")[0..-2].join("/")
+                    FileUtils.mkdir_p to_dir
+                    STDERR.puts "COPYING #{from_path.inspect} #{to_path.inspect}"
                     FileUtils.cp_r(from_path, to_path)
                 end
             end
@@ -178,19 +180,20 @@ CONTENTS
 
             @app_root = contents["app_root"] || "app"
 
-            paths = @specs.flat_map { |s| s.paths }
-            unless paths == paths.uniq
-                repeated_paths = paths.select { |p| paths.count(p) > 1 }
+            output_paths = @specs.flat_map { |s| s.paths.values }
+            unless output_paths == output_paths.uniq
+                repeated_paths = output_paths.select { |p| output_paths.count(p) > 1 }
                 raise "Repeated (conflicting?) paths in dgd.didgood! #{repeated_paths.inspect}"
             end
 
             # Make sure the dgd.didgood file overrides either no kernel paths or both/all
-            if KERNEL_PATHS.any? { |kp| paths.include?(kp) }
-                unless KERNEL_PATHS.all? { |kp| paths.include?(kp) }
+            if KERNEL_PATHS.any? { |kp| output_paths.include?(kp) }
+                unless KERNEL_PATHS.all? { |kp| output_paths.include?(kp) }
                     raise "dgd.didgood file #{path.inspect} includes some Kernel Library paths but not all! All needed: #{KERNEL_PATHS}!"
                 end
                 puts "This dgd.didgood file overrides the Kernel Library with its own."
             else
+                puts "This dgd.didgood needs the default Kernel Library."
                 # This app has specified no kernellib paths -- add them
                 git_repo = @repo.git_repo(DEFAULT_KERNELLIB_URL)
                 kl_paths = { "src/kernel" => "/kernel", "src/include/kernel" => "/include/kernel", "src/doc/kernel" => "/doc/kernel" }
@@ -260,7 +263,14 @@ CONTENTS
             @name = name
             @source = source
             @source_details = source_details
-            @paths = paths
+
+            cleaned_paths = {}
+            paths.each do |k, v|
+                # Remove leading and trailing slashes
+                cleaned_paths[k.gsub(/^\//, "").chomp("/")] = v.gsub(/^\//, "").chomp("/")
+            end
+
+            @paths = cleaned_paths
         end
     end
 end
