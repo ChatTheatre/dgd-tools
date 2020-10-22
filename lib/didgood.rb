@@ -62,12 +62,12 @@ module DidGood
 
         def assemble_app(location)
             dgd_root = "#{File.expand_path(location)}/#{GENERATED_ROOT}"
+            app_path = "#{File.expand_path(location)}/#{@didgood_file.app_root}"
             FileUtils.rm_rf(dgd_root)
-            Dir.mkdir(dgd_root)
+            FileUtils.cp_r(app_path, dgd_root)
 
             write_config_file("#{location}/dgd.config")
             specs = @didgood_file.specs
-
 
             specs.each do |spec|
                 git_repo = spec.source
@@ -166,6 +166,7 @@ CONTENTS
         attr_reader :path
         attr_reader :repo
         attr_reader :specs
+        attr_reader :app_root
 
         def initialize(repo, path)
             @path = path
@@ -174,6 +175,8 @@ CONTENTS
             contents = JSON.load(File.read(path))
 
             read_didgood_file(contents)
+
+            @app_root = contents["app_root"] || "app"
 
             paths = @specs.flat_map { |s| s.paths }
             unless paths == paths.uniq
