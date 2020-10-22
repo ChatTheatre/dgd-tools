@@ -9,6 +9,10 @@ module DidGood
 
     DGD_BUILD_COMMAND = %(make DEFINES='-DUINDEX_TYPE="unsigned int" -DUINDEX_MAX=UINT_MAX -DEINDEX_TYPE="unsigned short" -DEINDEX_MAX=USHRT_MAX -DSSIZET_TYPE="unsigned int" -DSSIZET_MAX=1048576' install
 )
+    KERNEL_PATHS = ["/include/kernel", "/kernel"]
+    DEFAULT_KERNELLIB_URL = "https://github.com/ChatTheatre/kernellib"
+
+    GENERATED_ROOT = ".root"
 
     def self.system_call(cmd)
         puts "Running command: #{cmd.inspect}..."
@@ -57,17 +61,13 @@ module DidGood
         end
 
         def assemble_app(location)
-            dgd_root = "#{File.expand_path(location)}/root"
-            Dir.mkdir(dgd_root) unless File.directory?(dgd_root)
+            dgd_root = "#{File.expand_path(location)}/#{GENERATED_ROOT}"
+            FileUtils.rm_rf(dgd_root)
+            Dir.mkdir(dgd_root)
 
             write_config_file("#{location}/dgd.config")
             specs = @didgood_file.specs
 
-            paths = specs.flat_map { |s| s.paths }
-            unless paths == paths.uniq
-                repeated_paths = paths.select { |p| paths.count(p) > 1 }
-                raise "Repeated (conflicting?) paths in dgd.didgood! #{repeated_paths.inspect}"
-            end
 
             specs.each do |spec|
                 git_repo = spec.source
@@ -77,7 +77,7 @@ module DidGood
                     from_path = "#{git_repo.local_dir}/#{from}"
                     to_path = "#{dgd_root}/#{to}"
                     FileUtils.mkdir_p to_path
-                    DidGood.system_call("cp -r #{from_path} #{to_path}")
+                    FileUtils.cp_r(from_path, to_path)
                 end
             end
         end
@@ -93,7 +93,7 @@ telnet_port = ([
 binary_port = ([
     "*":50110, /* Failsafe */
 ]);   /* binary ports */
-directory = "./root";
+directory = "./#{GENERATED_ROOT}";
 
 users       = 100;           /* max # of users */
 editors     = 40;           /* max # of editor sessions */
@@ -136,11 +136,17 @@ CONTENTS
 
             if File.directory?(@local_dir)
                 Dir.chdir(@local_dir) do
-                    DidGood.system_call("git pull")
+                    DidGood.system_call("git checkout #{default_branch} && git pull")
                 end
             else
                 DidGood.system_call("git clone #{@git_url} #{@local_dir}")
             end
+        end
+
+        def default_branch
+            return @default_branch if @default_branch
+            output = `git rev-parse --abbrev-ref origin/HEAD`.chomp
+            @default_branch = output.gsub(/^origin\//, "")
         end
 
         def use_details(details)
@@ -149,7 +155,6 @@ CONTENTS
                     DidGood.system_call("git checkout #{details["branch"]}")
                 end
             else
-                default_branch = `git rev-parse --abbrev-ref origin/HEAD`
                 Dir.chdir(@local_dir) do
                     DidGood.system_call("git checkout #{default_branch}")
                 end
@@ -171,6 +176,28 @@ CONTENTS
             raise "Expected a top-level JSON array in dgd.didgood!" unless contents.is_a?(Array)
 
             @specs = contents.flat_map { |item| json_to_specs(item) }
+
+            paths = @specs.flat_map { |s| s.paths }
+            unless paths == paths.uniq
+                repeated_paths = paths.select { |p| paths.count(p) > 1 }
+                raise "Repeated (conflicting?) paths in dgd.didgood! #{repeated_paths.inspect}"
+            end
+
+            # Make sure the dgd.didgood file overrides either no kernel paths or both/all
+            if KERNEL_PATHS.any? { |kp| paths.include?(kp) }
+                unless KERNEL_PATHS.all? { |kp| paths.include?(kp) }
+                    raise "dgd.didgood file #{path.inspect} includes some Kernel Library paths but not all! All needed: #{KERNEL_PATHS}!"
+                end
+                puts "This dgd.didgood file overrides the Kernel Library with its own."
+            else
+                # This app has specified no kernellib paths -- add them
+                git_repo = @repo.git_repo(DEFAULT_KERNELLIB_URL)
+                kl_paths = { "src/kernel" => "/kernel", "src/include/kernel" => "/include/kernel", "src/doc/kernel" => "/doc/kernel" }
+                klib_spec = GoodsSpec.new @repo, name: "default Kernel Library",
+                    source: git_repo, paths: kl_paths
+                specs.push klib_spec
+            end
+
             nil
         end
 
