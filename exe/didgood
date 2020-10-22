@@ -14,6 +14,7 @@ when "test"
     puts "Running didgood installer..."
     repo = DidGood::Repo.new
     repo.didgood_file("dgd.didgood")
+    puts "Verified Goods packages: this looks likely correct."
 when "install"
     unless File.exist?("dgd.didgood")
         raise "I don't see a dgd.didgood file in this directory!"
@@ -24,6 +25,6 @@ when "install"
     repo.assemble_app(".")
 when "work"
     puts "Starting DGD server... (not yet)"
-default
+else
     raise "Unrecognised didgood command: #{ARGV[0].inspect}!"
 end

@@ -2,9 +2,13 @@ require "DidGood/version"
 
 require "json"
 require "open-uri"
+require "fileutils"
 
 module DidGood
     class Error < StandardError; end
+
+    DGD_BUILD_COMMAND = %(make DEFINES='-DUINDEX_TYPE="unsigned int" -DUINDEX_MAX=UINT_MAX -DEINDEX_TYPE="unsigned short" -DEINDEX_MAX=USHRT_MAX -DSSIZET_TYPE="unsigned int" -DSSIZET_MAX=1048576' install
+)
 
     def self.system_call(cmd)
         puts "Running command: #{cmd.inspect}..."
@@ -27,6 +31,18 @@ module DidGood
                 full_subdir = "#{@didgood_dir}/#{subdir}"
                 Dir.mkdir(full_subdir) unless File.directory?(full_subdir)
             end
+
+            unless File.exist?("#{@didgood_dir}/dgd/bin/dgd")
+                dgd_dir = "#{@didgood_dir}/dgd"
+                if File.directory?(dgd_dir)
+                    # Not clear to me what to do here...
+                else
+                    DidGood.system_call("git clone https://github.com/ChatTheatre/dgd.git #{dgd_dir}")
+                    Dir.chdir("#{@didgood_dir}/dgd/src") do
+                        DidGood.system_call(DGD_BUILD_COMMAND)
+                    end
+                end
+            end
         end
 
         def git_repo(git_url)
@@ -41,6 +57,68 @@ module DidGood
         end
 
         def assemble_app(location)
+            dgd_root = "#{File.expand_path(location)}/root"
+            Dir.mkdir(dgd_root) unless File.directory?(dgd_root)
+
+            write_config_file("#{location}/dgd.config")
+            specs = @didgood_file.specs
+
+            paths = specs.flat_map { |s| s.paths }
+            unless paths == paths.uniq
+                repeated_paths = paths.select { |p| paths.count(p) > 1 }
+                raise "Repeated (conflicting?) paths in dgd.didgood! #{repeated_paths.inspect}"
+            end
+
+            specs.each do |spec|
+                git_repo = spec.source
+                git_repo.use_details(spec.source_details)
+
+                spec.paths.each do |from, to|
+                    from_path = "#{git_repo.local_dir}/#{from}"
+                    to_path = "#{dgd_root}/#{to}"
+                    FileUtils.mkdir_p to_path
+                    DidGood.system_call("cp -r #{from_path} #{to_path}")
+                end
+            end
+        end
+
+        def write_config_file(path)
+            File.open(path, "wb") do |f|
+                f.write <<CONTENTS
+/* These are SkotOS limits. They are enormous. They should
+   be configurable but they are not yet. */
+telnet_port = ([
+    "*":50100  /* telnet port number */
+]);
+binary_port = ([
+    "*":50110, /* Failsafe */
+]);   /* binary ports */
+directory = "./root";
+
+users       = 100;           /* max # of users */
+editors     = 40;           /* max # of editor sessions */
+ed_tmpfile  = "../state/ed";        /* proto editor tmpfile */
+swap_file   = "../state/swap";  /* swap file */
+swap_size   = 1048576;         /* # sectors in swap file */
+sector_size = 512;          /* swap sector size */
+swap_fragment   = 4096;           /* fragment to swap out */
+static_chunk    = 64512;        /* static memory chunk */
+dynamic_chunk   = 261120;       /* dynamic memory chunk */
+dump_file   = "../state/dump";  /* dump file */
+dump_interval   = 3600;             /* dump interval */
+
+typechecking    = 2;            /* highest level of typechecking */
+include_file    = "/include/std.h";     /* standard include file */
+include_dirs    = ({ "/include", "~/include" }); /* directories to search */
+auto_object     = "/kernel/lib/auto";   /* auto inherited object */
+driver_object   = "/kernel/sys/driver"; /* driver object */
+create      = "_F_create";      /* name of create function */
+
+array_size  = 16384;         /* max array size */
+objects     = 262144;          /* max # of objects */
+call_outs   = 16384;          /* max # of call_outs */
+CONTENTS
+            end
         end
     end
 
@@ -64,11 +142,25 @@ module DidGood
                 DidGood.system_call("git clone #{@git_url} #{@local_dir}")
             end
         end
+
+        def use_details(details)
+            if details["branch"]
+                Dir.chdir(@local_dir) do
+                    DidGood.system_call("git checkout #{details["branch"]}")
+                end
+            else
+                default_branch = `git rev-parse --abbrev-ref origin/HEAD`
+                Dir.chdir(@local_dir) do
+                    DidGood.system_call("git checkout #{default_branch}")
+                end
+            end
+        end
     end
 
     class AppFile
         attr_reader :path
         attr_reader :repo
+        attr_reader :specs
 
         def initialize(repo, path)
             @path = path
@@ -110,14 +202,20 @@ module DidGood
 
         def unbundled_json_to_spec(fields)
             source = nil
+            source_details = nil
             if fields["git"]
                 raise "A git source requires a git url: #{fields.inspect}!" unless fields["git"]["url"]
-                source = GitRepo.new(@repo, fields["git"]["url"])
+                source = @repo.git_repo(fields["git"]["url"])
+                source_details = fields["git"]  # May contain branch info, etc.
             else
                 raise "Didgood currently requires a Git-based source!"
             end
 
-            spec = GoodsSpec.new(@repo, name: fields["name"], source: source, paths: fields["paths"])
+            unless fields["paths"].all? { |k, v| k.is_a?(String) && v.is_a?(String) }
+                raise "Paths in Goods files must map strings to strings! #{fields["paths"].inspect}"
+            end
+
+            spec = GoodsSpec.new(@repo, name: fields["name"], source: source, source_details: source_details, paths: fields["paths"])
             return spec
         end
     end
@@ -126,12 +224,14 @@ module DidGood
         attr_reader :repo
         attr_reader :name
         attr_reader :source
+        attr_reader :source_details
         attr_reader :paths
 
-        def initialize(repo, name:, source:, paths:)
+        def initialize(repo, name:, source:, source_details: {}, paths:)
             @repo = repo
             @name = name
             @source = source
+            @source_details = source_details
             @paths = paths
         end
     end
