@@ -22,7 +22,9 @@ If you have a DGD application that uses didgood, run `didgood install` to downlo
 
 ## Using DidGood with your DGD Application
 
-DidGood needs you to specify a few things about each library you want to use. The easiest way to do that is with a library file (copied locally) or URL for downloading it - you can use a raw GitHub URL for this, for instance.
+DidGood needs a .goods file for each library you intend to use, or it needs the information that would normally have been in that .goods file. DidGood keeps its various settings in JSON.
+
+
 
 ## Creating the Goods
 

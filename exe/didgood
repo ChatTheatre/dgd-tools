@@ -7,8 +7,21 @@ if ARGV.size == 0
 end
 
 case ARGV[0]
-when "install"
+when "test"
+    unless File.exist?("dgd.didgood")
+        raise "I don't see a dgd.didgood file in this directory!"
+    end
     puts "Running didgood installer..."
+    repo = DidGood::Repo.new
+    repo.didgood_file("dgd.didgood")
+when "install"
+    unless File.exist?("dgd.didgood")
+        raise "I don't see a dgd.didgood file in this directory!"
+    end
+    puts "Running didgood installer..."
+    repo = DidGood::Repo.new
+    repo.didgood_file("dgd.didgood")
+    repo.assemble_app(".")
 when "work"
     puts "Starting DGD server... (not yet)"
 default
