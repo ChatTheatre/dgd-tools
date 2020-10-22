@@ -6,7 +6,7 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Noah Gibbs"]
   spec.email         = ["the.codefolio.guy@gmail.com"]
 
-  spec.summary       = %q{DidGood is a library and packaging system for the DGD language.}
+  spec.summary       = %q{DidGood is an experimental library and packaging system for the DGD language.}
   spec.description   = spec.summary
   spec.homepage      = "https://github.com/ChatTheatre/didgood"
   spec.license       = "AGPL"
