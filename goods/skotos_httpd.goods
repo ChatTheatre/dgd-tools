@@ -1,0 +1,10 @@
+{
+    "name": "SkotOS HTTPD",
+    "git": {
+        "url": "https://github.com/ChatTheatre/SkotOS.git",
+        "branch": "master"
+    },
+    "paths": {
+        "skoot/usr/HTTP": "usr/HTTP"
+    }
+}
