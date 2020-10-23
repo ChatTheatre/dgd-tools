@@ -1,14 +1,14 @@
 require_relative 'lib/DidGood/version'
 
 Gem::Specification.new do |spec|
-  spec.name          = "didgood"
+  spec.name          = "dgd-tools"
   spec.version       = DidGood::VERSION
   spec.authors       = ["Noah Gibbs"]
   spec.email         = ["the.codefolio.guy@gmail.com"]
 
-  spec.summary       = %q{DidGood is an experimental library and packaging system for the DGD language.}
-  spec.description   = spec.summary
-  spec.homepage      = "https://github.com/noahgibbs/didgood"
+  spec.summary       = %q{dgd-tools supplies DGD tools -- like the DGD Manifest library system -- via a Ruby gem.}
+  spec.description   = %q{dgd-tools supplies DGD Manifest and eventually perhaps other tools. DGD Manifest is an experimental DGD library and packaging system.}
+  spec.homepage      = "https://github.com/noahgibbs/dgd-tools"
   spec.license       = "AGPL"
   spec.required_ruby_version = Gem::Requirement.new(">= 2.3.0")
 

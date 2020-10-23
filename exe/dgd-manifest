@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+
+require "dgd-tools/manifest"
+
+if ARGV.size == 0
+    ARGV.push "install"
+end
+
+case ARGV[0]
+when "test"
+    unless File.exist?("dgd.manifest")
+        raise "I don't see a dgd.manifest file in this directory!"
+    end
+    puts "Running dgd.manifest installer..."
+    repo = DGD::Manifest::Repo.new
+    repo.manifest_file("dgd.manifest")
+    puts "Verified Manifest packages: this looks likely correct."
+when "install"
+    unless File.exist?("dgd.manifest")
+        raise "I don't see a dgd.manifest file in this directory!"
+    end
+    puts "Running DGD Manifest installer..."
+    repo = DGD::Manifest::Repo.new
+    repo.manifest_file("dgd.manifest")
+    repo.assemble_app(".")
+when "server"
+    puts "Starting DGD server... (not yet)"
+else
+    raise "Unrecognised #{$0} command: #{ARGV[0].inspect}!"
+end

@@ -1,12 +1,12 @@
-require "DidGood/version"
+require "dgd-tools/version"
 
 require "json"
 require "open-uri"
 require "fileutils"
 
-module DidGood
-    class Error < StandardError; end
+module DGD; end
 
+module DGD::Manifest
     DGD_BUILD_COMMAND = %(make DEFINES='-DUINDEX_TYPE="unsigned int" -DUINDEX_MAX=UINT_MAX -DEINDEX_TYPE="unsigned short" -DEINDEX_MAX=USHRT_MAX -DSSIZET_TYPE="unsigned int" -DSSIZET_MAX=1048576' install
 )
     KERNEL_PATHS = ["include/kernel", "kernel"]
@@ -22,28 +22,28 @@ module DidGood
         end
     end
 
-    # This is a repo of everything DidGood saves between runs.
+    # This is a repo of everything DGD Manifest saves between runs.
     # It includes downloaded Git repos, Goods files and more.
     class Repo
-        attr_reader :didgood_dir
+        attr_reader :manifest_dir
 
         def initialize
             @home = ENV["HOME"]
-            @didgood_dir = "#{@home}/.didgood"
-            Dir.mkdir(@didgood_dir) unless File.directory?(@didgood_dir)
+            @manifest_dir = "#{@home}/.dgd-tools"
+            Dir.mkdir(@manifest_dir) unless File.directory?(@manifest_dir)
             ["git", "goods"].each do |subdir|
-                full_subdir = "#{@didgood_dir}/#{subdir}"
+                full_subdir = "#{@manifest_dir}/#{subdir}"
                 Dir.mkdir(full_subdir) unless File.directory?(full_subdir)
             end
 
-            unless File.exist?("#{@didgood_dir}/dgd/bin/dgd")
-                dgd_dir = "#{@didgood_dir}/dgd"
+            unless File.exist?("#{@manifest_dir}/dgd/bin/dgd")
+                dgd_dir = "#{@manifest_dir}/dgd"
                 if File.directory?(dgd_dir)
                     # Not clear to me what to do here...
                 else
-                    DidGood.system_call("git clone https://github.com/ChatTheatre/dgd.git #{dgd_dir}")
-                    Dir.chdir("#{@didgood_dir}/dgd/src") do
-                        DidGood.system_call(DGD_BUILD_COMMAND)
+                    DGD::Manifest.system_call("git clone https://github.com/ChatTheatre/dgd.git #{dgd_dir}")
+                    Dir.chdir("#{@manifest_dir}/dgd/src") do
+                        DGD::Manifest.system_call(DGD_BUILD_COMMAND)
                     end
                 end
             end
@@ -54,20 +54,20 @@ module DidGood
             @git_repos[git_url] ||= GitRepo.new(self, git_url)
         end
 
-        def didgood_file(path)
-            raise "Already have a dgd.didgood file!" if @didgood_file
+        def manifest_file(path)
+            raise "Already have a dgd.manifest file!" if @manifest_file
 
-            @didgood_file ||= AppFile.new(self, path)
+            @manifest_file ||= AppFile.new(self, path)
         end
 
         def assemble_app(location)
             dgd_root = "#{File.expand_path(location)}/#{GENERATED_ROOT}"
-            app_path = "#{File.expand_path(location)}/#{@didgood_file.app_root}"
+            app_path = "#{File.expand_path(location)}/#{@manifest_file.app_root}"
             FileUtils.rm_rf(dgd_root)
             FileUtils.cp_r(app_path, dgd_root)
 
             write_config_file("#{location}/dgd.config")
-            specs = @didgood_file.specs
+            specs = @manifest_file.specs
 
             specs.each do |spec|
                 git_repo = spec.source
@@ -124,7 +124,7 @@ CONTENTS
         end
     end
 
-    # This is a DidGood-downloaded Git repo.
+    # This is a Git repo managed by dgd-tools.
     # It can be a source for a GoodsSpec
     class GitRepo
         attr_reader :local_dir
@@ -134,14 +134,14 @@ CONTENTS
             @git_url = git_url
             @repo = repo
             local_path = git_url.tr("/\\", "_")
-            @local_dir = "#{@repo.didgood_dir}/git/#{local_path}"
+            @local_dir = "#{@repo.manifest_dir}/git/#{local_path}"
 
             if File.directory?(@local_dir)
                 Dir.chdir(@local_dir) do
-                    DidGood.system_call("git checkout #{default_branch} && git pull")
+                    DGD::Manifest.system_call("git checkout #{default_branch} && git pull")
                 end
             else
-                DidGood.system_call("git clone #{@git_url} #{@local_dir}")
+                DGD::Manifest.system_call("git clone #{@git_url} #{@local_dir}")
             end
         end
 
@@ -154,11 +154,11 @@ CONTENTS
         def use_details(details)
             if details["branch"]
                 Dir.chdir(@local_dir) do
-                    DidGood.system_call("git checkout #{details["branch"]}")
+                    DGD::Manifest.system_call("git checkout #{details["branch"]}")
                 end
             else
                 Dir.chdir(@local_dir) do
-                    DidGood.system_call("git checkout #{default_branch}")
+                    DGD::Manifest.system_call("git checkout #{default_branch}")
                 end
             end
         end
@@ -173,27 +173,27 @@ CONTENTS
         def initialize(repo, path)
             @path = path
             @repo = repo
-            raise("No such dgd.didgood file as #{path.inspect}!") unless File.exist?(path)
+            raise("No such dgd.manifest file as #{path.inspect}!") unless File.exist?(path)
             contents = JSON.load(File.read(path))
 
-            read_didgood_file(contents)
+            read_manifest_file(contents)
 
             @app_root = contents["app_root"] || "app"
 
             output_paths = @specs.flat_map { |s| s.paths.values }
             unless output_paths == output_paths.uniq
                 repeated_paths = output_paths.select { |p| output_paths.count(p) > 1 }
-                raise "Repeated (conflicting?) paths in dgd.didgood! #{repeated_paths.inspect}"
+                raise "Repeated (conflicting?) paths in dgd.manifest! #{repeated_paths.inspect}"
             end
 
-            # Make sure the dgd.didgood file overrides either no kernel paths or both/all
+            # Make sure the dgd.manifest file overrides either no kernel paths or both/all
             if KERNEL_PATHS.any? { |kp| output_paths.include?(kp) }
                 unless KERNEL_PATHS.all? { |kp| output_paths.include?(kp) }
-                    raise "dgd.didgood file #{path.inspect} includes some Kernel Library paths but not all! All needed: #{KERNEL_PATHS}!"
+                    raise "dgd.manifest file #{path.inspect} includes some Kernel Library paths but not all! All needed: #{KERNEL_PATHS}!"
                 end
-                puts "This dgd.didgood file overrides the Kernel Library with its own."
+                puts "This dgd.manifest file overrides the Kernel Library with its own."
             else
-                puts "This dgd.didgood needs the default Kernel Library."
+                puts "This dgd.manifest needs the default Kernel Library."
                 # This app has specified no kernellib paths -- add them
                 git_repo = @repo.git_repo(DEFAULT_KERNELLIB_URL)
                 kl_paths = { "src/kernel" => "/kernel", "src/include/kernel" => "/include/kernel", "src/doc/kernel" => "/doc/kernel" }
@@ -205,8 +205,8 @@ CONTENTS
             nil
         end
 
-        def read_didgood_file(contents)
-            raise "Expected a top-level JSON object in dgd.didgood!" unless contents.is_a?(Hash)
+        def read_manifest_file(contents)
+            raise "Expected a top-level JSON object in dgd.manifest!" unless contents.is_a?(Hash)
 
             @specs = []
 
@@ -239,7 +239,7 @@ CONTENTS
                 source = @repo.git_repo(fields["git"]["url"])
                 source_details = fields["git"]  # May contain branch info, etc.
             else
-                raise "Didgood currently requires a Git-based source!"
+                raise "DGD Manifest currently requires a Git-based source!"
             end
 
             unless fields["paths"].all? { |k, v| k.is_a?(String) && v.is_a?(String) }
