@@ -1,8 +1,8 @@
-require_relative 'lib/DidGood/version'
+require_relative 'lib/dgd-tools/version'
 
 Gem::Specification.new do |spec|
   spec.name          = "dgd-tools"
-  spec.version       = DidGood::VERSION
+  spec.version       = DGD::VERSION
   spec.authors       = ["Noah Gibbs"]
   spec.email         = ["the.codefolio.guy@gmail.com"]
 

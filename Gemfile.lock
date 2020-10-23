@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    didgood (0.1.1)
+    dgd-tools (0.1.1)
 
 GEM
   remote: https://rubygems.org/
@@ -13,7 +13,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
-  didgood!
+  dgd-tools!
   minitest (~> 5.0)
   rake (~> 12.0)
 
