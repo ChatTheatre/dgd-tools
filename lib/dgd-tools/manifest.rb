@@ -9,7 +9,12 @@ module DGD; end
 module DGD::Manifest
     DGD_BUILD_COMMAND = %(make DEFINES='-DUINDEX_TYPE="unsigned int" -DUINDEX_MAX=UINT_MAX -DEINDEX_TYPE="unsigned short" -DEINDEX_MAX=USHRT_MAX -DSSIZET_TYPE="unsigned int" -DSSIZET_MAX=1048576' install
 )
-    KERNEL_PATHS = ["include/kernel", "kernel"]
+    KERNEL_PATH_MAP = {
+        "src/kernel" => "/kernel",
+        "src/include" => "/include",
+        "src/doc/kernel" => "/doc/kernel"
+    }
+    KERNEL_PATHS = KERNEL_PATH_MAP.values
     DEFAULT_KERNELLIB_URL = "https://github.com/ChatTheatre/kernellib"
 
     GENERATED_ROOT = ".root"
@@ -69,6 +74,8 @@ module DGD::Manifest
             write_config_file("#{location}/dgd.config")
             specs = @manifest_file.specs
 
+            copies = []
+
             specs.each do |spec|
                 git_repo = spec.source
                 git_repo.use_details(spec.source_details)
@@ -76,11 +83,15 @@ module DGD::Manifest
                 spec.paths.each do |from, to|
                     from_path = "#{git_repo.local_dir}/#{from}"
                     to_path = "#{dgd_root}/#{to}"
-                    to_dir = to_path.split("/")[0..-2].join("/")
-                    FileUtils.mkdir_p to_dir
-                    STDERR.puts "COPYING #{from_path.inspect} #{to_path.inspect}"
-                    FileUtils.cp_r(from_path, to_path)
+                    copies << [from_path, to_path]
                 end
+            end
+
+            copies.sort_by { |c| c[1] }.each do |from_path, to_path|
+                to_dir = to_path.split("/")[0..-2].join("/")
+                FileUtils.mkdir_p to_dir
+                STDERR.puts "COPYING #{from_path.inspect} #{to_path.inspect}"
+                FileUtils.cp_r(from_path, to_path)
             end
         end
 
@@ -93,7 +104,7 @@ telnet_port = ([
     "*":50100  /* telnet port number */
 ]);
 binary_port = ([
-    "*":50110, /* Failsafe */
+    "*":50110 /* Failsafe */
 ]);   /* binary ports */
 directory = "./#{GENERATED_ROOT}";
 
@@ -196,10 +207,9 @@ CONTENTS
                 puts "This dgd.manifest needs the default Kernel Library."
                 # This app has specified no kernellib paths -- add them
                 git_repo = @repo.git_repo(DEFAULT_KERNELLIB_URL)
-                kl_paths = { "src/kernel" => "/kernel", "src/include/kernel" => "/include/kernel", "src/doc/kernel" => "/doc/kernel" }
                 klib_spec = GoodsSpec.new @repo, name: "default Kernel Library",
-                    source: git_repo, paths: kl_paths
-                specs.push klib_spec
+                    source: git_repo, paths: KERNEL_PATH_MAP
+                specs.unshift klib_spec
             end
 
             nil
