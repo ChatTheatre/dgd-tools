@@ -14,6 +14,7 @@ when "test"
     puts "Running dgd.manifest installer..."
     repo = DGD::Manifest::Repo.new
     repo.manifest_file("dgd.manifest")
+    repo.precheck(".")
     puts "Verified Manifest packages: this looks likely correct."
 when "install"
     unless File.exist?("dgd.manifest")
@@ -22,7 +23,10 @@ when "install"
     puts "Running DGD Manifest installer..."
     repo = DGD::Manifest::Repo.new
     repo.manifest_file("dgd.manifest")
-    repo.assemble_app(".")
+    current_dir = File.expand_path(".")
+    repo.precheck(current_dir)
+    repo.assemble_app(current_dir)
+    puts "Assembled DGD application into #{current_dir}"
 when "server"
     puts "Starting DGD server..."
     DGD::Manifest.system_call("~/.dgd-tools/dgd/bin/dgd dgd.config")

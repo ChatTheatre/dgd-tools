@@ -65,6 +65,25 @@ module DGD::Manifest
             @manifest_file ||= AppFile.new(self, path)
         end
 
+        def files_to_assemble
+            subdirs = []
+
+            @manifest_file.specs.each do |spec|
+                git_repo = spec.source
+                git_repo.use_details(spec.source_details)
+
+                spec.paths.each do |from, to|
+                    from_path = "#{git_repo.local_dir}/#{from}"
+                    files = Dir["#{from_path}/**/*"].to_a
+                    dirs = files.select { |file| File.directory?(file) }
+                    non_dirs = files - dirs
+                    subdirs << { from: from_path, to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
+                end
+            end
+
+            subdirs
+        end
+
         def assemble_app(location)
             dgd_root = "#{File.expand_path(location)}/#{GENERATED_ROOT}"
             app_path = "#{File.expand_path(location)}/#{@manifest_file.app_root}"
@@ -72,26 +91,38 @@ module DGD::Manifest
             FileUtils.cp_r(app_path, dgd_root)
 
             write_config_file("#{location}/dgd.config")
-            specs = @manifest_file.specs
 
-            copies = []
+            files_to_assemble.sort_by { |sd| sd[:to] }.each do |sd_hash|
+                to_path = "#{dgd_root}/#{sd_hash[:to]}"
+                to_dir = to_path.split("/")[0..-2].join("/")
 
-            specs.each do |spec|
-                git_repo = spec.source
-                git_repo.use_details(spec.source_details)
+                STDERR.puts "COPYING #{sd_hash[:from].inspect} #{to_path.inspect}, #{sd_hash[:non_dirs].size} files..."
 
-                spec.paths.each do |from, to|
-                    from_path = "#{git_repo.local_dir}/#{from}"
-                    to_path = "#{dgd_root}/#{to}"
-                    copies << [from_path, to_path]
+                # Make all possibly-new directories
+                sd_hash[:dirs].each do |from_dir|
+                    to_dir = from_dir.sub(sd_hash[:from], to_path)
+                    FileUtils.mkdir_p to_dir
+                end
+
+                # Copy all files
+                sd_hash[:non_dirs].each do |from_file|
+                    to_file = from_file.sub(sd_hash[:from], to_path)
+                    FileUtils.cp from_file, to_file
                 end
             end
+        end
 
-            copies.sort_by { |c| c[1] }.each do |from_path, to_path|
-                to_dir = to_path.split("/")[0..-2].join("/")
-                FileUtils.mkdir_p to_dir
-                STDERR.puts "COPYING #{from_path.inspect} #{to_path.inspect}"
-                FileUtils.cp_r(from_path, to_path)
+        def precheck(location)
+            app_path = "#{File.expand_path(location)}/#{@manifest_file.app_root}"
+            app_files = Dir["#{app_path}/**"].to_a.select { |f| !File.directory?(f) }
+
+            subdirs = files_to_assemble
+            all_files = subdirs.flat_map { |sd| sd[:non_dirs] } + app_files
+            all_files.sort!
+
+            if all_files.size != all_files.uniq.size
+                repeated = all_files.uniq.select { |f| all_files.count(f) > 1 }
+                raise "Error in dgd.manifest! Repeated files: #{repeated.inspect} / #{all_files.inspect}"
             end
         end
 
