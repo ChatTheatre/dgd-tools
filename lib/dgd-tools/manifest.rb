@@ -74,10 +74,35 @@ module DGD::Manifest
 
                 spec.paths.each do |from, to|
                     from_path = "#{git_repo.local_dir}/#{from}"
-                    files = Dir["#{from_path}/**/*"].to_a
-                    dirs = files.select { |file| File.directory?(file) }
-                    non_dirs = files - dirs
-                    subdirs << { from: from_path, to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
+                    if File.directory?(from_path)
+                        files = Dir["#{from_path}/**/*"].to_a
+                        dirs = files.select { |file| File.directory?(file) }
+                        non_dirs = files - dirs
+                        subdirs << { from: from_path, to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
+                        STDERR.puts "Directory: #{subdirs[-1].inspect}"
+                    elsif from_path["*"]  # If from_path contains at least one asterisk
+                        components = from.split("/")
+                        first_wild_idx = components.index { |item| item["*"] }
+                        no_wild_from_path = components[0..(first_wild_idx-1)].join("/")
+                        wild_path = components[first_wild_idx..-1].join("/")
+
+                        STDERR.puts "NW: #{no_wild_from_path.inspect} WILD: #{wild_path.inspect}"
+                        STDERR.puts "Checking path: #{git_repo.local_dir}/#{no_wild_from_path}/#{wild_path}"
+                        files = Dir["#{git_repo.local_dir}/#{no_wild_from_path}/#{wild_path}"].to_a
+                        dirs = files.select { |file| File.directory?(file) }
+                        dirs += files.map { |f| File.dirname(f) }
+                        dirs.uniq!
+
+                        STDERR.puts "Files: #{files.inspect}  Dirs: #{dirs.inspect}"
+                        # MAJOR BUG: CREATE DIRS for ALL WILDCARD-MATCHED FILES
+
+                        non_dirs = files - dirs
+                        STDERR.puts "GOT HERE[3]: #{from_path.inspect}, #{non_dirs.inspect}"
+                        subdirs << { from: "#{git_repo.local_dir}/#{no_wild_from_path}", to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
+                    else
+                        STDERR.puts "GOT HERE [single file]: #{from.inspect}, #{to.inspect}"
+                        subdirs << { from: from_path, to: to, dirs: [], non_dirs: [from], source: git_repo }
+                    end
                 end
             end
 
@@ -228,20 +253,20 @@ CONTENTS
                 raise "Repeated (conflicting?) paths in dgd.manifest! #{repeated_paths.inspect}"
             end
 
-            # Make sure the dgd.manifest file overrides either no kernel paths or both/all
-            if KERNEL_PATHS.any? { |kp| output_paths.include?(kp) }
-                unless KERNEL_PATHS.all? { |kp| output_paths.include?(kp) }
-                    raise "dgd.manifest file #{path.inspect} includes some Kernel Library paths but not all! All needed: #{KERNEL_PATHS}!"
-                end
-                puts "This dgd.manifest file overrides the Kernel Library with its own."
-            else
-                puts "This dgd.manifest needs the default Kernel Library."
-                # This app has specified no kernellib paths -- add them
-                git_repo = @repo.git_repo(DEFAULT_KERNELLIB_URL)
-                klib_spec = GoodsSpec.new @repo, name: "default Kernel Library",
-                    source: git_repo, paths: KERNEL_PATH_MAP
-                specs.unshift klib_spec
-            end
+            ## Make sure the dgd.manifest file overrides either no kernel paths or both/all
+            #if KERNEL_PATHS.any? { |kp| output_paths.include?(kp) }
+            #    unless KERNEL_PATHS.all? { |kp| output_paths.include?(kp) }
+            #        raise "dgd.manifest file #{path.inspect} includes some Kernel Library paths but not all! All needed: #{KERNEL_PATHS}!"
+            #    end
+            #    puts "This dgd.manifest file overrides the Kernel Library with its own."
+            #else
+            #    puts "This dgd.manifest needs the default Kernel Library."
+            #    # This app has specified no kernellib paths -- add them
+            #    git_repo = @repo.git_repo(DEFAULT_KERNELLIB_URL)
+            #    klib_spec = GoodsSpec.new @repo, name: "default Kernel Library",
+            #        source: git_repo, paths: KERNEL_PATH_MAP
+            #    specs.unshift klib_spec
+            #end
 
             nil
         end
