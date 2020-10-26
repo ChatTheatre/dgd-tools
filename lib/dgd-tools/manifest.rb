@@ -79,28 +79,20 @@ module DGD::Manifest
                         dirs = files.select { |file| File.directory?(file) }
                         non_dirs = files - dirs
                         subdirs << { from: from_path, to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
-                        STDERR.puts "Directory: #{subdirs[-1].inspect}"
                     elsif from_path["*"]  # If from_path contains at least one asterisk
                         components = from.split("/")
                         first_wild_idx = components.index { |item| item["*"] }
                         no_wild_from_path = components[0..(first_wild_idx-1)].join("/")
                         wild_path = components[first_wild_idx..-1].join("/")
 
-                        STDERR.puts "NW: #{no_wild_from_path.inspect} WILD: #{wild_path.inspect}"
-                        STDERR.puts "Checking path: #{git_repo.local_dir}/#{no_wild_from_path}/#{wild_path}"
                         files = Dir["#{git_repo.local_dir}/#{no_wild_from_path}/#{wild_path}"].to_a
                         dirs = files.select { |file| File.directory?(file) }
                         dirs += files.map { |f| File.dirname(f) }
                         dirs.uniq!
 
-                        STDERR.puts "Files: #{files.inspect}  Dirs: #{dirs.inspect}"
-                        # MAJOR BUG: CREATE DIRS for ALL WILDCARD-MATCHED FILES
-
                         non_dirs = files - dirs
-                        STDERR.puts "GOT HERE[3]: #{from_path.inspect}, #{non_dirs.inspect}"
                         subdirs << { from: "#{git_repo.local_dir}/#{no_wild_from_path}", to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
                     else
-                        STDERR.puts "GOT HERE [single file]: #{from.inspect}, #{to.inspect}"
                         subdirs << { from: from_path, to: to, dirs: [], non_dirs: [from], source: git_repo }
                     end
                 end
@@ -116,22 +108,21 @@ module DGD::Manifest
             FileUtils.cp_r(app_path, dgd_root)
 
             write_config_file("#{location}/dgd.config")
+            FileUtils.mkdir_p("#{location}/state") # Statedir for statedumps, editor files, etc.
 
             files_to_assemble.sort_by { |sd| sd[:to] }.each do |sd_hash|
                 to_path = "#{dgd_root}/#{sd_hash[:to]}"
-                to_dir = to_path.split("/")[0..-2].join("/")
 
-                STDERR.puts "COPYING #{sd_hash[:from].inspect} #{to_path.inspect}, #{sd_hash[:non_dirs].size} files..."
-
-                # Make all possibly-new directories
-                sd_hash[:dirs].each do |from_dir|
-                    to_dir = from_dir.sub(sd_hash[:from], to_path)
-                    FileUtils.mkdir_p to_dir
+                # Make appropriate dirs, including empty ones
+                sd_hash[:dirs].each do |dir|
+                    FileUtils.mkdir_p dir.sub(sd_hash[:from], to_path)
                 end
 
                 # Copy all files
                 sd_hash[:non_dirs].each do |from_file|
-                    to_file = from_file.sub(sd_hash[:from], to_path)
+                    to_file = from_file.sub(sd_hash[:from], "#{dgd_root}/#{sd_hash[:to]}")
+                    to_dir = File.dirname(to_file)
+                    FileUtils.mkdir_p to_dir
                     FileUtils.cp from_file, to_file
                 end
             end
