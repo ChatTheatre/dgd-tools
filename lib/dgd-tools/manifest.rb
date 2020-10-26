@@ -75,7 +75,7 @@ module DGD::Manifest
                 spec.paths.each do |from, to|
                     from_path = "#{git_repo.local_dir}/#{from}"
                     if File.directory?(from_path)
-                        files = Dir["#{from_path}/**/*"].to_a
+                        files = Dir["#{from_path}/**/*"].to_a + Dir["#{from_path}/**/.*"].to_a
                         dirs = files.select { |file| File.directory?(file) }
                         non_dirs = files - dirs
                         subdirs << { from: from_path, to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
@@ -93,6 +93,7 @@ module DGD::Manifest
                         non_dirs = files - dirs
                         subdirs << { from: "#{git_repo.local_dir}/#{no_wild_from_path}", to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
                     else
+                        # A single file
                         subdirs << { from: from_path, to: to, dirs: [], non_dirs: [from], source: git_repo }
                     end
                 end
