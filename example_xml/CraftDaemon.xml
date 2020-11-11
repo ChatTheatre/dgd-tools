@@ -1,0 +1,42 @@
+<object program="/base/sys/craftd">
+  <Base:CraftDaemon>
+    <Base:Craftables>
+      <Base:Craftable item="OBJ(Regent:Props:Fabric:blanket)"/>
+      <Base:Craftable item="OBJ(Regent:Staff:Evett:Items:Clothes:Top)"/>
+      <Base:Craftable item="OBJ(Regent:Props:Fabric:Cloth-cleaning)"/>
+      <Base:Craftable item="OBJ(Regent:Staff:Debbie:IC:General:orderbook)"/>
+    </Base:Craftables>
+    <Base:AllTools>
+      <Base:AllToolDependents tool="mop floor"/>
+      <Base:AllToolDependents tool="new">
+        <Base:OneToolDependent item="OBJ(Regent:Props:Fabric:blanket)"/>
+        <Base:OneToolDependent item="OBJ(Regent:Props:Fabric:Cloth-cleaning)"/>
+        <Base:OneToolDependent item="OBJ(Regent:Staff:Debbie:IC:General:orderbook)"/>
+      </Base:AllToolDependents>
+      <Base:AllToolDependents tool="regent:props:sewing:tools:needle"/>
+      <Base:AllToolDependents tool="regent:props:sewing:tools:scissors"/>
+      <Base:AllToolDependents tool="tool:heatable:container:watertight"/>
+      <Base:AllToolDependents tool="tool:heatsource:fire"/>
+      <Base:AllToolDependents tool="tools:needle">
+        <Base:OneToolDependent item="OBJ(Regent:Props:Fabric:blanket)"/>
+        <Base:OneToolDependent item="OBJ(Regent:Props:Fabric:Cloth-cleaning)"/>
+      </Base:AllToolDependents>
+    </Base:AllTools>
+    <Base:AllIngredients>
+      <Base:AllIngredientDependents ingredient="bolt">
+        <Base:OneIngredientDependent item="OBJ(Regent:Props:Fabric:blanket)"/>
+        <Base:OneIngredientDependent item="OBJ(Regent:Props:Fabric:Cloth-cleaning)"/>
+      </Base:AllIngredientDependents>
+      <Base:AllIngredientDependents ingredient="ingredient:candle"/>
+      <Base:AllIngredientDependents ingredient="ingredient:lantern-candle-empty"/>
+      <Base:AllIngredientDependents ingredient="ingredient:lantern:candle"/>
+      <Base:AllIngredientDependents ingredient="ingredients:tallow"/>
+      <Base:AllIngredientDependents ingredient="ingredients:wick:hemp"/>
+      <Base:AllIngredientDependents ingredient="new">
+        <Base:OneIngredientDependent item="OBJ(Regent:Props:Fabric:blanket)"/>
+        <Base:OneIngredientDependent item="OBJ(Regent:Staff:Evett:Items:Clothes:Top)"/>
+        <Base:OneIngredientDependent item="OBJ(Regent:Props:Fabric:Cloth-cleaning)"/>
+      </Base:AllIngredientDependents>
+    </Base:AllIngredients>
+  </Base:CraftDaemon>
+</object>
