@@ -1,0 +1,35 @@
+#!/usr/bin/env ruby
+
+# Diff multiple Skotos-XML-format objects dumped from a
+# SkotOS-or-similar game to find out what updates should
+# be merged between them.
+
+require "dgd-tools/skotos_xml_obj"
+
+if ARGV.size != 2
+    STDERR.puts "Usage: skotos-xml-diff <obj_or_dir_1> <obj_or_dir_2>"
+    exit -1
+end
+
+if File.directory?(ARGV[0]) ^ File.directory?(ARGV[1])
+    STDERR.puts "Please give two files or two directories, not one of each!"
+    exit -1
+end
+
+if File.directory?(ARGV[0])
+    diff = SkotOS::XMLObject.diff_dirs(*ARGV)
+    if diff.empty?
+        puts "No difference."
+    else
+        puts diff.join("\n\n=====\n\n")
+    end
+else
+    obj1 = SkotOS::XMLObject.from_file(ARGV[0])
+    obj2 = SkotOS::XMLObject.from_file(ARGV[1])
+    diff = SkotOS::XMLObject.diff_between(obj1, obj2)
+    if diff.empty?
+        puts "No difference."
+    else
+        puts diff
+    end
+end
