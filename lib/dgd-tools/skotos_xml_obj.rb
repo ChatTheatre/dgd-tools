@@ -8,6 +8,8 @@ require "tempfile"
 
 module SkotOS; end
 
+# TODO: remove <Core:Property property="revisions"> from anywhere in the XML tree
+
 class SkotOS::XMLObject
     attr_reader :pretty
 
@@ -49,9 +51,16 @@ class SkotOS::XMLObject
         diff
     end
 
+    def self.skip_ignored_files(list)
+        list.select do |path|
+            !path[/,v$/] &&  # Ignore files ending in comma-v
+                !path[/-backup-\d+-\d+-\d+\.xml/]  # Ignore files ending in -backup-[DATE].xml
+        end
+    end
+
     def self.diff_dirs(dir1, dir2)
-        entries1 = Dir.glob("*", base: dir1).to_a
-        entries2 = Dir.glob("*", base: dir2).to_a
+        entries1 = skip_ignored_files(Dir.glob("*", base: dir1).to_a)
+        entries2 = skip_ignored_files(Dir.glob("*", base: dir2).to_a)
 
         only_in_1 = entries1 - entries2
         only_in_2 = entries2 - entries1
@@ -72,22 +81,27 @@ class SkotOS::XMLObject
             else
                 o1 = from_file(in_1)
                 o2 = from_file(in_2)
-                diff << diff_between(o1, o2, o1_name: in_1, o2_name: in_2)
+                this_diff = diff_between(o1, o2, o1_name: in_1, o2_name: in_2)
+                diff << this_diff unless this_diff.strip == ""
             end
         end
         diff
     end
 
     def self.remove_undiffed(doc)
-        if doc.root && doc.root.element? && doc.root.attribute("owner")
-            doc.root.remove_attribute("owner")
+        if doc.root && doc.root.element?
+            ignored_top_elements = ["program", "clone", "owner"]
+            ignored_top_elements.each do |attr|
+                if doc.root.attribute(attr)
+                    doc.root.remove_attribute(attr)
+                end
+            end
         end
     end
 
     def self.system_call(cmd, fail_ok: false)
         f = Tempfile.new("system_call_xml_diff_")
         begin
-            puts "Running command: #{cmd.inspect}..."
             system(cmd, out: f)
             unless fail_ok || $?.success?
                 f.rewind
