@@ -233,7 +233,7 @@ CONTENTS
             @path = path
             @repo = repo
             raise("No such dgd.manifest file as #{path.inspect}!") unless File.exist?(path)
-            contents = JSON.load(File.read(path))
+            contents = AppFile.parse_manifest_file(path)
 
             read_manifest_file(contents)
 
@@ -261,6 +261,22 @@ CONTENTS
             #end
 
             nil
+        end
+
+        # Load the JSON and then remove comments
+        def self.parse_manifest_file(path)
+            contents = JSON.parse(File.read path)
+            remove_comments!(contents)
+            contents
+        end
+
+        def self.remove_comments!(items)
+            if items.is_a?(Hash)
+                items.delete_if { |k, v| k[0] == "#" }
+            elsif items.is_a?(Array)
+                items.delete_if { |i| i.is_a?(String) && i[0] == "#" }
+                items.map! { |i| remove_comments(i) }
+            end
         end
 
         def read_manifest_file(contents)
