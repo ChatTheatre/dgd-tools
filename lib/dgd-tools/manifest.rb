@@ -273,9 +273,10 @@ CONTENTS
         def self.remove_comments!(items)
             if items.is_a?(Hash)
                 items.delete_if { |k, v| k[0] == "#" }
+                items.values.each { |v| remove_comments!(v) }
             elsif items.is_a?(Array)
                 items.delete_if { |i| i.is_a?(String) && i[0] == "#" }
-                items.map! { |i| remove_comments(i) }
+                items.each { |i| remove_comments!(i) }
             end
         end
 
@@ -345,6 +346,100 @@ CONTENTS
             end
 
             @paths = cleaned_paths
+        end
+    end
+
+    class AppDirectory
+        attr_reader :location
+        attr_accessor :name
+
+        DEFAULT_FILE_LOCATIONS = {
+            "manifest" => "dgd.manifest",
+            "gitignore" => ".gitignore",
+            "gems_rb" => "gems.rb",
+        }
+        DEFAULT_EMPTY_DIRS = [ "app", "state" ]
+
+        def initialize(directory)
+            @location = directory
+        end
+
+        def gitignore_contents
+            <<~FILE_CONTENTS
+                # DGD Manifest files
+                .root
+                dgd.config
+                state/*
+            FILE_CONTENTS
+        end
+
+        def manifest_contents
+            <<FILE_CONTENTS
+{
+    "name": "#{@name}",
+    "version": "0.1.0",
+    "description": "TODO: put description here",
+    "app_root": "app",
+    "goods": [
+        "# This is an example goods file - substitute your own.",
+        "https://raw.githubusercontent.com/noahgibbs/dgd-tools/main/goods/skotos_httpd.goods"
+    ],
+    "unbundled_goods": [
+        {
+            "#": "this is an example of unbundled goods - substitute your own",
+            "name": "kernellib",
+            "git": {
+                "url": "https://github.com/ChatTheatre/kernellib.git",
+                "branch": "master"
+            },
+            "paths": {
+                "src/doc/kernel": "doc/kernel",
+                "src/include/kernel": "include/kernel",
+                "src/include/*.h": "include",
+                "src/kernel": "kernel"
+            }
+        }
+    ]
+}
+FILE_CONTENTS
+        end
+
+        def gems_rb_contents
+            <<~FILE_CONTENTS
+                source "https://rubygems.org"
+
+                gem "dgd-tools", ">= #{DGD::VERSION}"
+            FILE_CONTENTS
+        end
+
+        def create!
+            if File.exist?(@location) && (!File.directory?(@location) || Dir["#{@location}/**"].size != 0)
+                raise "Cannot create a new DGD manifest project over a file or in an existing non-empty directory!"
+            end
+
+            puts "Creating new DGD manifest project at #{@location}..."
+            FileUtils.mkdir_p @location
+            Dir.chdir @location do
+                DEFAULT_FILE_LOCATIONS.each do |file_desc, file_location|
+                    File.open(file_location, "wb") do |f|
+                        contents = send("#{file_desc}_contents")
+                        f.write(contents)
+                    end
+                end
+
+                DEFAULT_EMPTY_DIRS.each do |dir|
+                    FileUtils.mkdir dir
+                    FileUtils.touch File.join(dir, ".keep")
+                end
+
+                result = system "bundle"
+                raise("Could not run bundler to install dgd-tools for #{@location}!") unless result
+
+                result = system "bundle exec dgd-manifest install"
+                raise("Error when running dgd-manifest for #{@location}!") unless result
+            end
+
+            puts "Successfully created project at #{@location}."
         end
     end
 end

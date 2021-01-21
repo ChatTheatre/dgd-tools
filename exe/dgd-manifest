@@ -6,7 +6,20 @@ if ARGV.size == 0
     ARGV.push "install"
 end
 
+if ARGV == ["--version"]
+    puts "dgd-tools version #{DGD::VERSION}"
+    exit
+end
+
 case ARGV[0]
+when "new"
+    unless ARGV.size == 2
+        puts "Usage: dgd-manifest new [project name]"
+        raise "Must supply exactly one argument to dgd-manifest new!"
+    end
+    appdir = DGD::Manifest::AppDirectory.new(File.expand_path ARGV[1])
+    appdir.name = ARGV[1]
+    appdir.create!
 when "test"
     unless File.exist?("dgd.manifest")
         raise "I don't see a dgd.manifest file in this directory!"
