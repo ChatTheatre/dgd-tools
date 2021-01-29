@@ -11,6 +11,17 @@ if ARGV == ["--version"]
     exit
 end
 
+if ARGV.size == 1 && ["-h", "--help"].include?(ARGV[0])
+    puts <<HELP_INFO
+dgd-manifest commands:
+
+new [project_name]: create a new DGD-manifest project
+test: make sure the dgd.manifest file is well-formed and usable
+install: compile the DGD application to a config file and a root directory
+HELP_INFO
+    exit
+end
+
 case ARGV[0]
 when "new"
     unless ARGV.size == 2

@@ -6,6 +6,17 @@
 
 require "dgd-tools/skotos_xml_obj"
 
+if ARGV.size == 1 && ["-h", "--help"].include?(ARGV[0])
+    print <<HELP_INFO
+skotos-xml-diff [file1] [file2]
+
+OR
+
+skotos-xml-diff [dir1] [dir2]
+HELP_INFO
+    exit
+end
+
 if ARGV.size != 2
     STDERR.puts "Usage: skotos-xml-diff <obj_or_dir_1> <obj_or_dir_2>"
     exit -1
