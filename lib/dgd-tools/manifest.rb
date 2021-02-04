@@ -32,23 +32,26 @@ module DGD::Manifest
     class Repo
         attr_reader :manifest_dir
 
-        def initialize
-            @home = ENV["HOME"]
-            @manifest_dir = "#{@home}/.dgd-tools"
-            Dir.mkdir(@manifest_dir) unless File.directory?(@manifest_dir)
-            ["git", "goods"].each do |subdir|
-                full_subdir = "#{@manifest_dir}/#{subdir}"
-                Dir.mkdir(full_subdir) unless File.directory?(full_subdir)
-            end
+        def initialize(no_write_homedir: false)
+            unless no_write_homedir
+                @home = ENV["HOME"]
+                @manifest_dir = "#{@home}/.dgd-tools"
+                Dir.mkdir(@manifest_dir) unless File.directory?(@manifest_dir)
 
-            unless File.exist?("#{@manifest_dir}/dgd/bin/dgd")
-                dgd_dir = "#{@manifest_dir}/dgd"
-                if File.directory?(dgd_dir)
-                    # Not clear to me what to do here...
-                else
-                    DGD::Manifest.system_call("git clone https://github.com/ChatTheatre/dgd.git #{dgd_dir}")
-                    Dir.chdir("#{@manifest_dir}/dgd/src") do
-                        DGD::Manifest.system_call(DGD_BUILD_COMMAND)
+                ["git", "goods"].each do |subdir|
+                    full_subdir = "#{@manifest_dir}/#{subdir}"
+                    Dir.mkdir(full_subdir) unless File.directory?(full_subdir)
+                end
+
+                unless File.exist?("#{@manifest_dir}/dgd/bin/dgd")
+                    dgd_dir = "#{@manifest_dir}/dgd"
+                    if File.directory?(dgd_dir)
+                        # Not clear to me what to do here...
+                    else
+                        DGD::Manifest.system_call("git clone https://github.com/ChatTheatre/dgd.git #{dgd_dir}")
+                        Dir.chdir("#{@manifest_dir}/dgd/src") do
+                            DGD::Manifest.system_call(DGD_BUILD_COMMAND)
+                        end
                     end
                 end
             end
