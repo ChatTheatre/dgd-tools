@@ -8,7 +8,7 @@
         {
             "name": "dgd-manifest repo",
             "git": {
-                "url": "https://github.com/noahgibbs/dgd-tools.git",
+                "url": "https://github.com/ChatTheatre/dgd-tools.git",
                 "branch": "main"
             },
             "paths": {
