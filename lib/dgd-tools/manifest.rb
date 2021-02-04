@@ -75,14 +75,14 @@ module DGD::Manifest
 
         # This includes files to assemble... But also subdirectories and commands. This format is
         # unstable and ugly, and should not be exposed to outside parties who might later depend on it.
-        def files_to_assemble
-            subdirs = []
+        def assembly_operations(location)
+            operations = []
 
-            raise("No manifest file!") unless @manifest_file
+            raise("No manifest file!") if @no_manifest_file
 
             @manifest_file.specs.each do |spec|
                 git_repo = spec.source
-                git_repo.use_details(spec.source_details)
+                git_repo.use_details(spec.source_details)  # This sets things like checked-out branch
 
                 spec.paths.each do |from, to|
                     # Note: git_repo.local_dir is an absolute path.
@@ -91,7 +91,7 @@ module DGD::Manifest
                         files = Dir["#{from_path}/**/*"].to_a + Dir["#{from_path}/**/.*"].to_a
                         dirs = files.select { |file| File.directory?(file) }
                         non_dirs = files - dirs
-                        subdirs << { from: from_path, to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
+                        operations << { cmd: "cp", from: from_path, to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
                     elsif from_path["*"]  # If from_path contains at least one asterisk
                         components = from.split("/")
                         first_wild_idx = components.index { |item| item["*"] }
@@ -104,53 +104,56 @@ module DGD::Manifest
                         dirs.uniq!
 
                         non_dirs = files - dirs
-                        subdirs << { from: "#{git_repo.local_dir}/#{no_wild_from_path}", to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
+                        operations << { cmd: "cp", from: "#{git_repo.local_dir}/#{no_wild_from_path}", to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
                     else
                         # A single file
-                        subdirs << { from: from_path, to: to, dirs: [], non_dirs: [from], source: git_repo }
+                        operations << { cmd: "cp", from: from_path, to: to, dirs: [], non_dirs: [from], source: git_repo }
                     end
                 end
             end
 
-            subdirs
+            app_path = "#{File.expand_path(location)}/#{@manifest_file.app_root}"
+            app_files = Dir["#{app_path}/**"].to_a
+            app_dirs = app_files.select { |f| File.directory?(f) }
+            app_non_dirs = app_files - app_dirs
+            unless app_dirs.empty? && app_non_dirs.empty?
+                operations << { cmd: "cp", from: app_path, to: ".", dirs: app_dirs, non_dirs: app_non_dirs }  # No source
+            end
+
+            operations
         end
 
         public
 
         def assemble_app(location)
             dgd_root = "#{File.expand_path(location)}/#{GENERATED_ROOT}"
-            app_path = "#{File.expand_path(location)}/#{@manifest_file.app_root}"
             FileUtils.rm_rf(dgd_root)
-            FileUtils.cp_r(app_path, dgd_root)
 
-            write_config_file("#{location}/dgd.config")
-            FileUtils.mkdir_p("#{location}/state") # Statedir for statedumps, editor files, etc.
+            Dir.chdir(location) do
+                write_config_file("#{location}/dgd.config")
+                FileUtils.mkdir_p("#{location}/state") # Statedir for statedumps, editor files, etc.
 
-            files_to_assemble.sort_by { |sd| sd[:to] }.each do |sd_hash|
-                to_path = "#{dgd_root}/#{sd_hash[:to]}"
+                assembly_operations(location).each do |sd_hash|
+                    to_path = "#{dgd_root}/#{sd_hash[:to]}"
 
-                # Make appropriate dirs, including empty ones
-                sd_hash[:dirs].each do |dir|
-                    FileUtils.mkdir_p dir.sub(sd_hash[:from], to_path)
-                end
+                    # Make appropriate dirs, including empty ones
+                    sd_hash[:dirs].each do |dir|
+                        FileUtils.mkdir_p dir.sub(sd_hash[:from], to_path)
+                    end
 
-                # Copy all files
-                sd_hash[:non_dirs].each do |from_file|
-                    to_file = from_file.sub(sd_hash[:from], "#{dgd_root}/#{sd_hash[:to]}")
-                    to_dir = File.dirname(to_file)
-                    FileUtils.mkdir_p to_dir
-                    FileUtils.cp from_file, to_file
+                    # Copy all files
+                    sd_hash[:non_dirs].each do |from_file|
+                        to_file = from_file.sub(sd_hash[:from], "#{dgd_root}/#{sd_hash[:to]}")
+                        to_dir = File.dirname(to_file)
+                        FileUtils.mkdir_p to_dir
+                        FileUtils.cp from_file, to_file
+                    end
                 end
             end
         end
 
         def precheck(location)
-            app_path = "#{File.expand_path(location)}/#{@manifest_file.app_root}"
-            app_files = Dir["#{app_path}/**"].to_a.select { |f| !File.directory?(f) }
-
-            subdirs = files_to_assemble
-            all_files = subdirs.flat_map { |sd| sd[:non_dirs] } + app_files
-            all_files.sort!
+            all_files = assembly_operations(location).flat_map { |sd| sd[:non_dirs] }
 
             if all_files.size != all_files.uniq.size
                 repeated = all_files.uniq.select { |f| all_files.count(f) > 1 }
