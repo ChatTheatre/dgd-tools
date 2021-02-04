@@ -32,28 +32,25 @@ module DGD::Manifest
     class Repo
         attr_reader :shared_dir
 
-        def initialize(no_write_homedir: false)
-            @no_write_homedir = no_write_homedir
+        def initialize
             @no_manifest_file = true
-            unless no_write_homedir
-                @home = ENV["HOME"]
-                @shared_dir = "#{@home}/.dgd-tools"
-                Dir.mkdir(@shared_dir) unless File.directory?(@shared_dir)
+            @home = ENV["HOME"]
+            @shared_dir = "#{@home}/.dgd-tools"
+            Dir.mkdir(@shared_dir) unless File.directory?(@shared_dir)
 
-                ["git", "goods"].each do |subdir|
-                    full_subdir = "#{@shared_dir}/#{subdir}"
-                    Dir.mkdir(full_subdir) unless File.directory?(full_subdir)
-                end
+            ["git", "goods"].each do |subdir|
+                full_subdir = "#{@shared_dir}/#{subdir}"
+                Dir.mkdir(full_subdir) unless File.directory?(full_subdir)
+            end
 
-                unless File.exist?("#{@shared_dir}/dgd/bin/dgd")
-                    dgd_dir = "#{@shared_dir}/dgd"
-                    if File.directory?(dgd_dir)
-                        # Not clear to me what to do here...
-                    else
-                        DGD::Manifest.system_call("git clone https://github.com/ChatTheatre/dgd.git #{dgd_dir}")
-                        Dir.chdir("#{@shared_dir}/dgd/src") do
-                            DGD::Manifest.system_call(DGD_BUILD_COMMAND)
-                        end
+            unless File.exist?("#{@shared_dir}/dgd/bin/dgd")
+                dgd_dir = "#{@shared_dir}/dgd"
+                if File.directory?(dgd_dir)
+                    # Not clear to me what to do here...
+                else
+                    DGD::Manifest.system_call("git clone https://github.com/ChatTheatre/dgd.git #{dgd_dir}")
+                    Dir.chdir("#{@shared_dir}/dgd/src") do
+                        DGD::Manifest.system_call(DGD_BUILD_COMMAND)
                     end
                 end
             end

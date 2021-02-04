@@ -13,7 +13,7 @@ class DGDToolsTest < Minitest::Test
 
     def with_repo_for_data_dir(subdir)
         Dir.chdir(File.join(@data_dir, subdir)) do
-            repo = DGD::Manifest::Repo.new(no_write_homedir: true)
+            repo = DGD::Manifest::Repo.new
             repo.manifest_file("dgd.manifest")
             yield(repo)
         end
