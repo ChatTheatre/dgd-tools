@@ -1,0 +1,10 @@
+{
+    "name": "Empty Manifest",
+    "version": "0.1.0",
+    "description": "An empty DGD manifest for basic testing",
+    "app_root": "root",
+    "goods": [
+    ],
+    "unbundled_goods": [
+    ]
+}
