@@ -146,7 +146,7 @@ module DGD::Manifest
         def write_config_file(path)
             File.open(path, "wb") do |f|
                 f.write <<CONTENTS
-/* These are SkotOS limits. They are enormous. They should
+/* These are SkotOS limits. They are larger than you are likely to need. They should
    be configurable but they are not yet. */
 telnet_port = ([
     "*":50100  /* telnet port number */
