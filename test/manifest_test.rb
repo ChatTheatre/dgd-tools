@@ -5,15 +5,15 @@ class DGDToolsTest < Minitest::Test
     refute_nil ::DGD::VERSION
   end
 
-  def test_it_does_something_useless
-    assert true
+  def with_repo_for_data_dir(subdir)
+    Dir.chdir(File.join(__dir__, "data", subdir)) do
+      repo = DGD::Manifest::Repo.new(no_write_homedir: true)
+      repo.manifest_file("dgd.manifest")
+      yield(repo)
+    end
   end
 
   def test_empty_precheck
-    Dir.chdir(File.join(__dir__, "data", "empty")) do
-      repo = DGD::Manifest::Repo.new
-      repo.manifest_file("dgd.manifest")
-      repo.precheck(".")
-    end
+    with_repo_for_data_dir("empty") { |repo| repo.precheck(".") }
   end
 end
