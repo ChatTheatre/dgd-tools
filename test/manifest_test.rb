@@ -5,6 +5,7 @@ class DGDToolsTest < Minitest::Test
         super
         @test_dir = __dir__
         @data_dir = File.join(@test_dir, "data")
+        @dgd_tools_repo_dir = File.join(File.expand_path(ENV["HOME"]), ".dgd-tools", "git", "https:__github.com_noahgibbs_dgd-tools.git")
     end
 
     def test_that_it_has_a_version_number
@@ -34,13 +35,38 @@ class DGDToolsTest < Minitest::Test
             ops = repo.send(:assembly_operations, ".")
             assert_equal [
                 {
-                    :cmd => "cp",
                     :from => "#{@data_dir}/app_only/app",
                     :to => ".",
                     :dirs => [ "#{@data_dir}/app_only/app/a_dir" ],
-                    :non_dirs => [ "#{@data_dir}/app_only/app/file_1" ]
+                    :non_dirs => [ "#{@data_dir}/app_only/app/file_1", "#{@data_dir}/app_only/app/a_dir/file_2" ]
                 },
-            ], ops
+            ], ops.map { |h| h.slice(:from, :to, :dirs, :non_dirs) }
+        end
+    end
+
+    def test_app_overwrite_has_correct_order
+        with_repo_for_data_dir("app_overwrite") do |repo|
+            ops = repo.send(:assembly_operations, ".")
+            assert_equal [
+
+                {
+                    :from=>"#{@dgd_tools_repo_dir}/test/data/app_only/app",
+                    :to=>".",
+                    :dirs=>["#{@dgd_tools_repo_dir}/test/data/app_only/app/a_dir"],
+                    :non_dirs=>[
+                        "#{@dgd_tools_repo_dir}/test/data/app_only/app/file_1",
+                        "#{@dgd_tools_repo_dir}/test/data/app_only/app/a_dir/file_2"]
+                },
+                {
+                    :from=>"#{@data_dir}/app_overwrite/app",
+                    :to=>".",
+                    :dirs=>["#{@data_dir}/app_overwrite/app/a_dir"],
+                    :non_dirs=>[
+                        "#{@data_dir}/app_overwrite/app/file_1",
+                        "#{@data_dir}/app_overwrite/app/a_dir/file_2"
+                    ]
+                }
+            ], ops.map { |h| h.slice(:from, :to, :dirs, :non_dirs) }
         end
     end
 end
