@@ -1,0 +1,19 @@
+{
+    "name": "App-files-overwrite Manifest",
+    "version": "0.1.0",
+    "description": "Contains app files that should overwrite unbundled goods files",
+    "goods": [
+    ],
+    "unbundled_goods": [
+        {
+            "name": "dgd-manifest repo",
+            "git": {
+                "url": "https://github.com/noahgibbs/dgd-tools.git",
+                "branch": "main"
+            },
+            "paths": {
+                "test/data/app_only/app": "."
+            }
+        }
+    ]
+}
