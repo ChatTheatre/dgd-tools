@@ -8,3 +8,4 @@
 /tmp/
 *.gem
 test/data/**/dgd.config
+test/data/*/.root
