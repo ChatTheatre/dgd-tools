@@ -30,26 +30,28 @@ module DGD::Manifest
     # This is a repo of everything DGD Manifest saves between runs.
     # It includes downloaded Git repos, Goods files and more.
     class Repo
-        attr_reader :manifest_dir
+        attr_reader :shared_dir
 
         def initialize(no_write_homedir: false)
+            @no_write_homedir = no_write_homedir
+            @no_manifest_file = true
             unless no_write_homedir
                 @home = ENV["HOME"]
-                @manifest_dir = "#{@home}/.dgd-tools"
-                Dir.mkdir(@manifest_dir) unless File.directory?(@manifest_dir)
+                @shared_dir = "#{@home}/.dgd-tools"
+                Dir.mkdir(@shared_dir) unless File.directory?(@shared_dir)
 
                 ["git", "goods"].each do |subdir|
-                    full_subdir = "#{@manifest_dir}/#{subdir}"
+                    full_subdir = "#{@shared_dir}/#{subdir}"
                     Dir.mkdir(full_subdir) unless File.directory?(full_subdir)
                 end
 
-                unless File.exist?("#{@manifest_dir}/dgd/bin/dgd")
-                    dgd_dir = "#{@manifest_dir}/dgd"
+                unless File.exist?("#{@shared_dir}/dgd/bin/dgd")
+                    dgd_dir = "#{@shared_dir}/dgd"
                     if File.directory?(dgd_dir)
                         # Not clear to me what to do here...
                     else
                         DGD::Manifest.system_call("git clone https://github.com/ChatTheatre/dgd.git #{dgd_dir}")
-                        Dir.chdir("#{@manifest_dir}/dgd/src") do
+                        Dir.chdir("#{@shared_dir}/dgd/src") do
                             DGD::Manifest.system_call(DGD_BUILD_COMMAND)
                         end
                     end
@@ -63,8 +65,9 @@ module DGD::Manifest
         end
 
         def manifest_file(path)
-            raise "Already have a dgd.manifest file!" if @manifest_file
+            raise "Already have a dgd.manifest file!" unless @no_manifest_file
 
+            @no_manifest_file = false
             @manifest_file ||= AppFile.new(self, path)
         end
 
@@ -205,7 +208,7 @@ CONTENTS
             @git_url = git_url
             @repo = repo
             local_path = git_url.tr("/\\", "_")
-            @local_dir = "#{@repo.manifest_dir}/git/#{local_path}"
+            @local_dir = "#{@repo.shared_dir}/git/#{local_path}"
 
             if File.directory?(@local_dir)
                 Dir.chdir(@local_dir) do
