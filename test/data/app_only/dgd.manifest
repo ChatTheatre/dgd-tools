@@ -1,0 +1,9 @@
+{
+    "name": "App-files-only Manifest",
+    "version": "0.1.0",
+    "description": "Contains only app files, no goods bundled or unbundled",
+    "goods": [
+    ],
+    "unbundled_goods": [
+    ]
+}
