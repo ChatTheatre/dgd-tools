@@ -220,9 +220,7 @@ CONTENTS
         end
 
         def default_branch
-            return @default_branch if @default_branch
-            output = `git rev-parse --abbrev-ref origin/HEAD`.chomp
-            @default_branch = output.gsub(/^origin\//, "")
+            @default_branch ||= `git rev-parse --abbrev-ref origin/HEAD`.chomp.gsub(/^origin\//, "")
         end
 
         def use_details(details)
