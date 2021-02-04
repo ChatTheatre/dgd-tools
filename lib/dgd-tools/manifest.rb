@@ -88,7 +88,7 @@ module DGD::Manifest
                         files = Dir["#{from_path}/**/*"].to_a + Dir["#{from_path}/**/.*"].to_a
                         dirs = files.select { |file| File.directory?(file) }
                         non_dirs = files - dirs
-                        operations << { cmd: "cp", from: from_path, to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
+                        operations << { cmd: "cp", from: from_path, to: to, dirs: dirs, non_dirs: non_dirs, comment: :single_dir }
                     elsif from_path["*"]  # If from_path contains at least one asterisk
                         components = from.split("/")
                         first_wild_idx = components.index { |item| item["*"] }
@@ -101,20 +101,20 @@ module DGD::Manifest
                         dirs.uniq!
 
                         non_dirs = files - dirs
-                        operations << { cmd: "cp", from: "#{git_repo.local_dir}/#{no_wild_from_path}", to: to, dirs: dirs, non_dirs: non_dirs, source: git_repo }
+                        operations << { cmd: "cp", from: "#{git_repo.local_dir}/#{no_wild_from_path}", to: to, dirs: dirs, non_dirs: non_dirs, comment: :path_wildcard }
                     else
                         # A single file
-                        operations << { cmd: "cp", from: from_path, to: to, dirs: [], non_dirs: [from], source: git_repo }
+                        operations << { cmd: "cp", from: from_path, to: to, dirs: [], non_dirs: [from_path], comment: :single_file }
                     end
                 end
             end
 
             app_path = "#{File.expand_path(location)}/#{@manifest_file.app_root}"
-            app_files = Dir["#{app_path}/**"].to_a
+            app_files = Dir["#{app_path}/**/*"].to_a
             app_dirs = app_files.select { |f| File.directory?(f) }
             app_non_dirs = app_files - app_dirs
             unless app_dirs.empty? && app_non_dirs.empty?
-                operations << { cmd: "cp", from: app_path, to: ".", dirs: app_dirs, non_dirs: app_non_dirs }  # No source
+                operations << { cmd: "cp", from: app_path, to: ".", dirs: app_dirs, non_dirs: app_non_dirs, comment: :app_files }  # No source
             end
 
             operations
