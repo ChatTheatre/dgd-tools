@@ -65,14 +65,21 @@ module DGD::Manifest
             @manifest_file ||= AppFile.new(self, path)
         end
 
+        protected
+
+        # This includes files to assemble... But also subdirectories and commands. This format is
+        # unstable and ugly, and should not be exposed to outside parties who might later depend on it.
         def files_to_assemble
             subdirs = []
+
+            raise("No manifest file!") unless @manifest_file
 
             @manifest_file.specs.each do |spec|
                 git_repo = spec.source
                 git_repo.use_details(spec.source_details)
 
                 spec.paths.each do |from, to|
+                    # Note: git_repo.local_dir is an absolute path.
                     from_path = "#{git_repo.local_dir}/#{from}"
                     if File.directory?(from_path)
                         files = Dir["#{from_path}/**/*"].to_a + Dir["#{from_path}/**/.*"].to_a
@@ -101,6 +108,8 @@ module DGD::Manifest
 
             subdirs
         end
+
+        public
 
         def assemble_app(location)
             dgd_root = "#{File.expand_path(location)}/#{GENERATED_ROOT}"
