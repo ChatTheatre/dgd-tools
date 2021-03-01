@@ -122,16 +122,29 @@ module DGD::Manifest
 
         public
 
-        def assemble_app(location)
-            dgd_root = "#{File.expand_path(location)}/#{GENERATED_ROOT}"
-            FileUtils.rm_rf(dgd_root)
+        def dgd_root(location)
+            "#{File.expand_path(location)}/#{GENERATED_ROOT}"
+        end
 
+        def assemble_app(location)
+            Dir[File.join(dgd_root(location), "*")].each { |dir| FileUtils.rm_rf dir }
+
+            write_app_files(location)
+        end
+
+        def update_app(location)
+            write_app_files(location)  # TODO: maybe check files dates? Some way to do update-only
+        end
+
+        protected
+
+        def write_app_files(location)
             Dir.chdir(location) do
                 write_config_file("#{location}/dgd.config")
                 FileUtils.mkdir_p("#{location}/state") # Statedir for statedumps, editor files, etc.
 
                 assembly_operations(location).each do |sd_hash|
-                    to_path = "#{dgd_root}/#{sd_hash[:to]}"
+                    to_path = "#{dgd_root(location)}/#{sd_hash[:to]}"
 
                     # Make appropriate dirs, including empty ones
                     sd_hash[:dirs].each do |dir|
@@ -140,7 +153,7 @@ module DGD::Manifest
 
                     # Copy all files
                     sd_hash[:non_dirs].each do |from_file|
-                        to_file = from_file.sub(sd_hash[:from], "#{dgd_root}/#{sd_hash[:to]}")
+                        to_file = from_file.sub(sd_hash[:from], "#{dgd_root(location)}/#{sd_hash[:to]}")
                         to_dir = File.dirname(to_file)
                         FileUtils.mkdir_p to_dir
                         FileUtils.cp from_file, to_file
@@ -148,6 +161,8 @@ module DGD::Manifest
                 end
             end
         end
+
+        public
 
         def precheck(location)
             all_files = assembly_operations(location).flat_map { |sd| sd[:non_dirs] }
