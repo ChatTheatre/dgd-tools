@@ -8,7 +8,12 @@ require "tempfile"
 
 module SkotOS; end
 
-# TODO: remove <Core:Property property="revisions"> from anywhere in the XML tree
+class SkotOS::XMLObject; end
+
+class << SkotOS::XMLObject
+    attr_accessor :merry_only
+    attr_accessor :ignore_whitespace
+end
 
 class SkotOS::XMLObject
     attr_reader :pretty
@@ -27,8 +32,6 @@ class SkotOS::XMLObject
         remove_undiffed(doc)
 
         pretty = doc.to_xml(indent:3)
-        #data = doc.to_hash
-        #prune_whitespace(data)
         SkotOS::XMLObject.new pretty, noko_doc: doc
     end
 
@@ -42,8 +45,11 @@ class SkotOS::XMLObject
             of1.close
             of2.close
 
+            diff_opts = [ "-c" ]
+            diff_opts += [ "-w" ] if self.ignore_whitespace
+
             # Diff 'fails' if there's a difference between the two files.
-            diff = system_call("diff -c #{of1.path} #{of2.path}", fail_ok: true)
+            diff = system_call("diff #{diff_opts.join(" ")} #{of1.path} #{of2.path}", fail_ok: true)
             diff.sub!(of1.path, o1_name)
             diff.sub!(of2.path, o2_name)
         ensure
@@ -53,18 +59,23 @@ class SkotOS::XMLObject
         diff
     end
 
-    def self.skip_ignored_files(list)
-        list.select do |path|
-            !path[/,v$/] &&  # Ignore files ending in comma-v
-                !path[/-backup-\d+-\d+-\d+\.xml/] && # Ignore files ending in -backup-[DATE].xml
-                path != ".git" && # Ignore .git directories
-                path != "MOVED" # Ignore MOVED - it's a sort of recycle, waiting to be emptied
+    def self.skip_ignored_files(list, base_dir)
+        if self.merry_only
+            list.select { |path| File.directory?(base_dir + "/" + path) ||
+                path[/.xml$/] || path[/.XML$/] }
+        else
+            list.select do |path|
+                !path[/,v$/] &&  # Ignore files ending in comma-v
+                    !path[/-backup-\d+-\d+-\d+\.xml/] && # Ignore files ending in -backup-[DATE].xml
+                    path != ".git" && # Ignore .git directories
+                    path != "MOVED" # Ignore MOVED - it's a sort of recycle, waiting to be emptied
+            end
         end
     end
 
     def self.diff_dirs(dir1, dir2)
-        entries1 = skip_ignored_files(Dir.glob("*", base: dir1).to_a)
-        entries2 = skip_ignored_files(Dir.glob("*", base: dir2).to_a)
+        entries1 = skip_ignored_files(Dir.glob("*", base: dir1).to_a, dir1)
+        entries2 = skip_ignored_files(Dir.glob("*", base: dir2).to_a, dir2)
 
         only_in_1 = entries1 - entries2
         only_in_2 = entries2 - entries1
@@ -75,8 +86,8 @@ class SkotOS::XMLObject
         diff << "Only in second: #{only_in_2.map { |s| dir2 + "/" + s }.join(", ")}" unless only_in_2.empty?
 
         in_both.each do |file|
-            in_1 = "#{dir1}/#{file}"
-            in_2 = "#{dir2}/#{file}"
+            in_1 = File.join dir1, file
+            in_2 = File.join dir2, file
             if File.directory?(in_1) ^ File.directory?(in_2)
                 diff << "Only a directory in one, not both: #{dir1}/#{file}"
             elsif File.directory?(in_1)
@@ -105,10 +116,11 @@ class SkotOS::XMLObject
         revs = noko_with_name_and_attrs(doc.root, "Core:Property", { "property" => "revisions" })
         raise "Too many revisions items!" if revs.size > 1
         revs[0].remove if revs.size > 0
-        #revs = doc.root.at_xpath("Core:Property[@property=revisions]")
-        #if revs
-        #    revs.remove
-        #end
+
+        if self.merry_only
+            # Kill off all the non-Merry nodes
+            noko_remove_non_merry_nodes(doc.root)
+        end
     end
 
     def self.noko_with_name_and_attrs(node, name, attrs)
@@ -118,6 +130,37 @@ class SkotOS::XMLObject
             results << node
         end
         results
+    end
+
+    def self.noko_remove_non_merry_nodes(root)
+        root.children.each do |node|
+            if node.name != "Core:PropertyContainer"
+                node.remove
+                next
+            end
+
+            node.children.each do |node2|
+                if node2.name != "Core:PCProperties"
+                    node2.remove
+                    next
+                end
+
+                node2.children.each do |property_node|
+                    if property_node.name != "Core:Property" || property_node.attribute("property").value[0..5] != "merry:"
+                        property_node.remove
+                        next
+                    end
+                    # Leave the Merry node alone
+                end
+
+                if node2.children.size == 0
+                    node2.remove
+                end
+            end
+            if node.children.size == 0
+                node.remove
+            end
+        end
     end
 
     def self.system_call(cmd, fail_ok: false)
