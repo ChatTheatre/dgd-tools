@@ -12,9 +12,11 @@ module SkotOS; end
 
 class SkotOS::XMLObject
     attr_reader :pretty
+    attr_reader :noko_doc
 
-    def initialize(pretty)
+    def initialize(pretty, noko_doc: nil)
         @pretty = pretty
+        @noko_doc = noko_doc
     end
 
     def self.from_file(filename)
@@ -27,7 +29,7 @@ class SkotOS::XMLObject
         pretty = doc.to_xml(indent:3)
         #data = doc.to_hash
         #prune_whitespace(data)
-        SkotOS::XMLObject.new pretty
+        SkotOS::XMLObject.new pretty, noko_doc: doc
     end
 
     def self.diff_between(obj1, obj2, o1_name: "Object 1", o2_name: "Object 2")
@@ -54,7 +56,9 @@ class SkotOS::XMLObject
     def self.skip_ignored_files(list)
         list.select do |path|
             !path[/,v$/] &&  # Ignore files ending in comma-v
-                !path[/-backup-\d+-\d+-\d+\.xml/]  # Ignore files ending in -backup-[DATE].xml
+                !path[/-backup-\d+-\d+-\d+\.xml/] && # Ignore files ending in -backup-[DATE].xml
+                path != ".git" && # Ignore .git directories
+                path != "MOVED" # Ignore MOVED - it's a sort of recycle, waiting to be emptied
         end
     end
 
@@ -67,8 +71,8 @@ class SkotOS::XMLObject
         in_both = entries1 & entries2
 
         diff = []
-        diff << "Only in first: #{only_in_1.join(", ")}" unless only_in_1.empty?
-        diff << "Only in second: #{only_in_2.join(", ")}" unless only_in_2.empty?
+        diff << "Only in first: #{only_in_1.map { |s| dir1 + "/" + s }.join(", ")}" unless only_in_1.empty?
+        diff << "Only in second: #{only_in_2.map { |s| dir2 + "/" + s }.join(", ")}" unless only_in_2.empty?
 
         in_both.each do |file|
             in_1 = "#{dir1}/#{file}"
@@ -97,6 +101,23 @@ class SkotOS::XMLObject
                 end
             end
         end
+
+        revs = noko_with_name_and_attrs(doc.root, "Core:Property", { "property" => "revisions" })
+        raise "Too many revisions items!" if revs.size > 1
+        revs[0].remove if revs.size > 0
+        #revs = doc.root.at_xpath("Core:Property[@property=revisions]")
+        #if revs
+        #    revs.remove
+        #end
+    end
+
+    def self.noko_with_name_and_attrs(node, name, attrs)
+        results = node.children.flat_map { |n| noko_with_name_and_attrs(n, name, attrs) }
+        if node.name == name &&
+            attrs.all? { |k, v| node.attribute(k).value == v }
+            results << node
+        end
+        results
     end
 
     def self.system_call(cmd, fail_ok: false)
