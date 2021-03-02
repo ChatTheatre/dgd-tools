@@ -16,7 +16,6 @@ module DGD::Manifest
     }
     KERNEL_PATHS = KERNEL_PATH_MAP.values
     DEFAULT_KERNELLIB_URL = "https://github.com/ChatTheatre/kernellib"
-
     GENERATED_ROOT = ".root"
 
     def self.system_call(cmd)
@@ -175,40 +174,7 @@ module DGD::Manifest
 
         def write_config_file(path)
             File.open(path, "wb") do |f|
-                f.write <<CONTENTS
-/* These are SkotOS limits. They are larger than you are likely to need. They should
-   be configurable but they are not yet. */
-telnet_port = ([
-    "*":50100  /* telnet port number */
-]);
-binary_port = ([
-    "*":50110 /* Failsafe */
-]);   /* binary ports */
-directory = "./#{GENERATED_ROOT}";
-
-users       = 100;           /* max # of users */
-editors     = 40;           /* max # of editor sessions */
-ed_tmpfile  = "../state/ed";        /* proto editor tmpfile */
-swap_file   = "../state/swap";  /* swap file */
-swap_size   = 1048576;         /* # sectors in swap file */
-sector_size = 512;          /* swap sector size */
-swap_fragment   = 4096;           /* fragment to swap out */
-static_chunk    = 64512;        /* static memory chunk */
-dynamic_chunk   = 261120;       /* dynamic memory chunk */
-dump_file   = "../state/dump";  /* dump file */
-dump_interval   = 3600;             /* dump interval */
-
-typechecking    = 2;            /* highest level of typechecking */
-include_file    = "/include/std.h";     /* standard include file */
-include_dirs    = ({ "/include", "~/include" }); /* directories to search */
-auto_object     = "/kernel/lib/auto";   /* auto inherited object */
-driver_object   = "/kernel/sys/driver"; /* driver object */
-create      = "_F_create";      /* name of create function */
-
-array_size  = 16384;         /* max array size */
-objects     = 262144;          /* max # of objects */
-call_outs   = 16384;          /* max # of call_outs */
-CONTENTS
+                f.write @manifest_file.dgd_config.as_file
             end
         end
     end
@@ -241,11 +207,11 @@ CONTENTS
         def use_details(details)
             if details["branch"]
                 Dir.chdir(@local_dir) do
-                    DGD::Manifest.system_call("git checkout #{details["branch"]}")
+                    DGD::Manifest.system_call("git checkout #{details["branch"]} && git pull")
                 end
             else
                 Dir.chdir(@local_dir) do
-                    DGD::Manifest.system_call("git checkout #{default_branch}")
+                    DGD::Manifest.system_call("git checkout #{default_branch} && git pull")
                 end
             end
         end
@@ -255,7 +221,7 @@ CONTENTS
         attr_reader :path
         attr_reader :repo
         attr_reader :specs
-        attr_reader :app_root
+        attr_reader :dgd_config
 
         def initialize(repo, path)
             @path = path
@@ -264,8 +230,6 @@ CONTENTS
             contents = AppFile.parse_manifest_file(path)
 
             read_manifest_file(contents)
-
-            @app_root = contents["app_root"] || "app"
 
             output_paths = @specs.flat_map { |s| s.paths.values }
             unless output_paths == output_paths.uniq
@@ -313,6 +277,8 @@ CONTENTS
 
             @specs = []
 
+            @dgd_config = DGDRuntimeConfig.new (contents["config"] || {})
+
             if contents["unbundled_goods"]
                 raise "Unbundled_goods must be an array!" unless contents["unbundled_goods"].is_a?(Array)
 
@@ -332,6 +298,10 @@ CONTENTS
                     unbundled_json_to_spec(json_contents)
                 end
             end
+        end
+
+        def app_root
+            @dgd_config.app_root
         end
 
         def unbundled_json_to_spec(fields)
@@ -468,6 +438,116 @@ FILE_CONTENTS
             end
 
             puts "Successfully created project at #{@location}."
+        end
+    end
+
+    class DGDRuntimeConfig
+        attr_reader :app_root
+
+        DEFAULT_CONFIG = {
+                users: 100,
+                editors: 40,
+                swap_size: 1048576,
+                sector_size: 512,
+                swap_fragment: 4096,
+                static_chunk: 64512,
+                dynamic_chunk: 261120,
+                dump_interval: 3600,
+                typechecking: 2,
+                include_file: "/include/std.h",
+                include_dirs: ["/include", "~/include"],
+                auto_object: "/kernel/lib/auto",
+                driver_object: "/kernel/sys/driver",
+                create: "_F_create",
+                array_size: 16384,
+                objects: 262144,
+                call_outs: 16384,
+            }
+        CONFIG_KEYS = DEFAULT_CONFIG.keys.map(&:to_s) + [ "app_root", "ports", "telnet_ports", "dump_file", "statedir" ]
+
+        def initialize(config_data)
+            @app_root = config_data["app_root"] || "app"
+            @ports = {
+                "*" => 50100,
+            }
+            @telnet_ports = {
+                "*" => 50110,
+            }
+            @statedir = config_data["statedir"] || "state"
+            @dump_file = if config_data["dump_file"]
+                    "../" + config_data["dump_file"]
+                else
+                    "../#{@statedir}/dump"
+                end
+            @config = DEFAULT_CONFIG.dup
+
+            @raw_data = config_data
+            @config.keys.each do |prop|
+                # For now, assume and require that JSON data is the correct type if present
+                @config[prop] = config_data[prop.to_s] if config_data[prop.to_s]
+            end
+            unexpected_config_keys = config_data.keys - CONFIG_KEYS
+            unless unexpected_config_keys.empty?
+                raise "Unexpected key names in DGD configuration: #{unexpected_config_keys.inspect}!"
+            end
+
+            if config_data["telnet_ports"]
+                @telnet_ports = config_to_ports(config_data["telnet_ports"])
+            end
+            if config_data["ports"]
+                @ports = config_to_ports(config_data["ports"])
+            end
+        end
+
+        def config_to_ports(data)
+            if data.is_a?(Hash)
+                # TODO: verify that keys are IP addr strings and values are legal port numbers
+                return data
+            elsif data.is_a?(Array)
+                # TODO: verify that data is an array of legal integer port numbers
+                ports = {}
+                data.each { |p| ports["*"] = p }
+                return ports
+            elsif data.is_a?(Integer)
+                return { "*": data }
+            else
+                raise "dgd-manifest: not sure how to get port data from a #{data.class.name} -- #{data.inspect}!"
+            end
+        end
+
+        def as_file
+            return <<DGD_CONFIG
+telnet_port = ([
+    #{@telnet_ports.map { |ip, p| "#{ip.inspect}:#{p}" }.join(",\n    ") }
+]);   /* legacy telnet ports */
+binary_port = ([
+    #{@ports.map { |ip, p| "#{ip.inspect}:#{p}" }.join(",\n    ") }
+]);   /* binary ports */
+directory       = "./#{GENERATED_ROOT}";
+
+users           = #{@config[:users]}; /* max # of connections */
+editors         = #{@config[:editors]}; /* max # of built-in-editor sessions */
+ed_tmpfile      = "../#{@statedir}/ed"; /* proto editor tmpfile */
+swap_file       = "../#{@statedir}/swap"; /* swap file */
+swap_size       = #{@config[:swap_size]}; /* # sectors in swap file */
+sector_size     = #{@config[:sector_size]}; /* swap sector size */
+swap_fragment   = #{@config[:swap_fragment]}; /* fragment to swap out */
+static_chunk    = #{@config[:static_chunk]}; /* static memory chunk */
+dynamic_chunk   = #{@config[:dynamic_chunk]}; /* dynamic memory chunk */
+dump_file       = #{@dump_file.inspect}; /* dump file */
+dump_interval   = #{@config[:dump_interval]}; /* expected statedump interval in seconds */
+
+typechecking    = #{@config[:typechecking]}; /* level of typechecking (2 is highest) */
+include_file    = #{@config[:include_file].inspect}; /* standard include file */
+include_dirs    = ({ #{@config[:include_dirs].map(&:inspect).join(", ")} }); /* directories to search */
+auto_object     = #{@config[:auto_object].inspect}; /* auto inherited object */
+driver_object   = #{@config[:driver_object].inspect}; /* driver object */
+create          = #{@config[:create].inspect}; /* name of create function */
+
+array_size      = #{@config[:array_size]}; /* max array size */
+objects         = #{@config[:objects]}; /* max # of objects */
+call_outs       = #{@config[:call_outs]}; /* max # of callouts */
+DGD_CONFIG
         end
     end
 end
