@@ -78,12 +78,12 @@ module DGD::Manifest
             raise("No manifest file!") if @no_manifest_file
 
             @manifest_file.specs.each do |spec|
-                git_repo = spec.source
-                git_repo.use_details(spec.source_details)  # This sets things like checked-out branch
+                spec_git_repo = spec.source
+                spec_git_repo.use_details(spec.source_details)  # This sets things like checked-out branch
 
                 spec.paths.each do |from, to|
-                    # Note: git_repo.local_dir is an absolute path.
-                    from_path = "#{git_repo.local_dir}/#{from}"
+                    # Note: spec_git_repo.local_dir is an absolute path.
+                    from_path = "#{spec_git_repo.local_dir}/#{from}"
                     if File.directory?(from_path)
                         files = Dir["#{from_path}/**/*"].to_a + Dir["#{from_path}/**/.*"].to_a
                         dirs = files.select { |file| File.directory?(file) }
@@ -95,13 +95,13 @@ module DGD::Manifest
                         no_wild_from_path = components[0..(first_wild_idx-1)].join("/")
                         wild_path = components[first_wild_idx..-1].join("/")
 
-                        files = Dir["#{git_repo.local_dir}/#{no_wild_from_path}/#{wild_path}"].to_a
+                        files = Dir["#{spec_git_repo.local_dir}/#{no_wild_from_path}/#{wild_path}"].to_a
                         dirs = files.select { |file| File.directory?(file) }
                         dirs += files.map { |f| File.dirname(f) }
                         dirs.uniq!
 
                         non_dirs = files - dirs
-                        operations << { cmd: "cp", from: "#{git_repo.local_dir}/#{no_wild_from_path}", to: to, dirs: dirs, non_dirs: non_dirs, comment: :path_wildcard }
+                        operations << { cmd: "cp", from: "#{spec_git_repo.local_dir}/#{no_wild_from_path}", to: to, dirs: dirs, non_dirs: non_dirs, comment: :path_wildcard }
                     else
                         # A single file
                         operations << { cmd: "cp", from: from_path, to: to, dirs: [], non_dirs: [from_path], comment: :single_file }
@@ -282,9 +282,9 @@ CONTENTS
             #else
             #    puts "This dgd.manifest needs the default Kernel Library."
             #    # This app has specified no kernellib paths -- add them
-            #    git_repo = @repo.git_repo(DEFAULT_KERNELLIB_URL)
+            #    spec_git_repo = @repo.git_repo(DEFAULT_KERNELLIB_URL)
             #    klib_spec = GoodsSpec.new @repo, name: "default Kernel Library",
-            #        source: git_repo, paths: KERNEL_PATH_MAP
+            #        source: spec_git_repo, paths: KERNEL_PATH_MAP
             #    specs.unshift klib_spec
             #end
 
