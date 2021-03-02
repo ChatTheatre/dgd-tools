@@ -5,7 +5,7 @@ class DGDToolsTest < Minitest::Test
         super
         @test_dir = __dir__
         @data_dir = File.join(@test_dir, "data")
-        @dgd_tools_repo_dir = File.join(File.expand_path(ENV["HOME"]), ".dgd-tools", "git", "https:__github.com_noahgibbs_dgd-tools.git")
+        @dgd_tools_repo_dir = File.join(File.expand_path(ENV["HOME"]), ".dgd-tools", "git", "https:__github.com_ChatTheatre_dgd-tools.git")
     end
 
     def test_that_it_has_a_version_number
