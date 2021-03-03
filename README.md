@@ -14,6 +14,18 @@ DGD Manifest is a simple initial library system. I'm sure I'll figure more out a
 
 This work has grown out of [SkotOS and ChatTheatre](https://github.com/ChatTheatre) tasks.
 
+You can find example DGD manifest files under the "test" directory and also in [various](https://github.com/noahgibbs/prototype_vRWOT) [SkotOS-based games](https://github.com/ChatTheatre/gables_game) that use the DGD Manifest system.
+
+You can find example "goods" (library) files under the "goods" subdirectory of this repo.
+
+## WOE Objects and skotos-xml-diff
+
+SkotOS-based games use an XML format for in-game objects called WOE, which is [documented in SkotOS-Doc](https://ChatTheatre.github.io/SkotOS-Doc). The skotos-xml-diff utility will diff between WOE objects or directories of WOE objects.
+
+See SkotOS-Doc for more detail about how this can be used with a SkotOS game.
+
+Run "skotos-xml-diff --help" for a list of options. You can tell it to ignore whitespace, to diff only the Merry (script) contents of the objects, and to ignore certain XML node types.
+
 ## Installation
 
 You would normally install DGDTools directly: `gem install dgd-tools`.
@@ -25,6 +37,8 @@ It's possible to add it to a Ruby's application's Gemfile. Ordinarily you wouldn
 If you have a DGD application that uses DGD Manifest, run `dgd-manifest install` to download its dependencies and create a fully-assembled DGD directory for it. You can also `dgd-manifest test` to make sure its dependencies are downloaded and satisfied without building an application directory.
 
 That fully-assembled DGD directory is named ".root". To run your dgd server, type "dgd-manifest server".
+
+If you update files in your root and want to update files under the generated root directory, use "dgd-manifest update".
 
 ## Using DGD Manifest with your DGD Application
 
