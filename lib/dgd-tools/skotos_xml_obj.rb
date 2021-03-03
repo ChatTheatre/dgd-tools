@@ -46,7 +46,7 @@ class SkotOS::XMLObject
             of2.close
 
             diff_opts = [ "-c" ]
-            diff_opts += [ "-w" ] if self.ignore_whitespace
+            diff_opts += [ "-w", "-B" ] if self.ignore_whitespace
 
             # Diff 'fails' if there's a difference between the two files.
             diff = system_call("diff #{diff_opts.join(" ")} #{of1.path} #{of2.path}", fail_ok: true)
@@ -121,9 +121,33 @@ class SkotOS::XMLObject
             # Kill off all the non-Merry nodes
             noko_remove_non_merry_nodes(doc.root)
         end
+
+        base_combat = noko_single_node(doc.root, "Base:Combat")
+        if base_combat
+            base_strength = noko_single_node(base_combat, "Base:Strength", attrs: { "value" => "1" })
+            base_max_fatigue = noko_single_node(base_combat, "Base:MaxFatigue", attrs: { "value" => "1" })
+            if base_strength && base_max_fatigue && noko_non_text(base_combat.children).size == 2
+                base_combat.remove
+            end
+        end
     end
 
-    def self.noko_with_name_and_attrs(node, name, attrs)
+    def self.noko_single_node(node, name, attrs: {})
+        choices = noko_with_name_and_attrs(node, name, attrs)
+        if choices.size < 1
+            nil
+        elsif choices.size > 1
+            raise "Single-node search returned more than one node! #{name.inspect}, #{attrs.inspect}"
+        else
+            choices[0]
+        end
+    end
+
+    def self.noko_non_text(nodes)
+        nodes.select { |n| !n.is_a? Nokogiri::XML::Text }
+    end
+
+    def self.noko_with_name_and_attrs(node, name, attrs = {})
         results = node.children.flat_map { |n| noko_with_name_and_attrs(n, name, attrs) }
         if node.name == name &&
             attrs.all? { |k, v| node.attribute(k).value == v }
