@@ -13,6 +13,7 @@ class SkotOS::XMLObject; end
 class << SkotOS::XMLObject
     attr_accessor :merry_only
     attr_accessor :ignore_whitespace
+    attr_accessor :ignore_types
 end
 
 class SkotOS::XMLObject
@@ -113,13 +114,22 @@ class SkotOS::XMLObject
             end
         end
 
-        revs = noko_with_name_and_attrs(doc.root, "Core:Property", { "property" => "revisions" })
-        raise "Too many revisions items!" if revs.size > 1
-        revs[0].remove if revs.size > 0
+        rev = noko_single_node(doc.root, "Core:Property", attrs: { "property" => "revisions" })
+        rev.remove if rev
+
+        list = noko_single_node(doc.root, "Core:Property", attrs: { "property" => "#list#" })
+        list.remove if list
 
         if self.merry_only
             # Kill off all the non-Merry nodes
             noko_remove_non_merry_nodes(doc.root)
+        end
+
+        if self.ignore_types
+            self.ignore_types.each do |ignored_type|
+                skipped = noko_with_name_and_attrs(doc.root, ignored_type)
+                skipped.each { |n| n.remove }
+            end
         end
 
         base_combat = noko_single_node(doc.root, "Base:Combat")
@@ -127,7 +137,9 @@ class SkotOS::XMLObject
             base_strength = noko_single_node(base_combat, "Base:Strength", attrs: { "value" => "1" })
             base_max_fatigue = noko_single_node(base_combat, "Base:MaxFatigue", attrs: { "value" => "1" })
             if base_strength && base_max_fatigue && noko_non_text(base_combat.children).size == 2
+                next_text = base_combat.next
                 base_combat.remove
+                next_text.remove
             end
         end
     end

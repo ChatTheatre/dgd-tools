@@ -4,55 +4,38 @@
 # SkotOS-or-similar game to find out what updates should
 # be merged between them.
 
+require 'optimist'
 require "dgd-tools/skotos_xml_obj"
 
-if ARGV.size == 1 && ["-h", "--help"].include?(ARGV[0])
-    print <<HELP_INFO
-skotos-xml-diff [options] file1 file2
-
-OR
-
-skotos-xml-diff [options] dir1 dir2
-
-Options include:
-  --merry-only           Only examine Merry scripts
-  --ignore-whitespace    Ignore all whitespace changes
-HELP_INFO
-    exit
+OPTS = Optimist::options do
+    version "DGD-tools version #{DGD::VERSION}"
+    banner <<BANNER
+Usage:
+    skotos-xml-diff [options] <file_or_dir_1> <file_or_dir_2>
+where [options] are:
+BANNER
+    opt :merry_only, "Only diff Merry scripts"
+    opt :ignore_whitespace, "Ignore whitespace in final diff"
+    opt :ignore_types, "Comma-separated list of XML node types to ignore (e.g. Combat:Base,Base:Exit)", type: :string
 end
 
-args = ARGV
+Optimist::die "Supply exactly two files or directories -- you supplied #{ARGV.size}!" unless ARGV.size == 2
+Optimist::die "Supply both files or both directories, not one of each!" if File.directory?(ARGV[0]) ^ File.directory?(ARGV[1])
 
-if args.include?("--merry-only")
-    SkotOS::XMLObject.merry_only = true
-    args -= ["--merry-only"]
-end
+SkotOS::XMLObject.merry_only = true if OPTS[:merry_only]
+SkotOS::XMLObject.ignore_whitespace = true if OPTS[:ignore_whitespace]
+SkotOS::XMLObject.ignore_types = OPTS[:ignore_types].split(",") if OPTS[:ignore_types]
 
-if args.include?("--ignore-whitespace")
-    SkotOS::XMLObject.ignore_whitespace = true
-    args -= ["--ignore-whitespace"]
-end
-
-if args.size != 2
-    STDERR.puts "Usage: skotos-xml-diff [options] <obj_or_dir_1> <obj_or_dir_2>"
-    exit -1
-end
-
-if File.directory?(args[0]) ^ File.directory?(args[1])
-    STDERR.puts "Please give two files or two directories, not one of each!"
-    exit -1
-end
-
-if File.directory?(args[0])
-    diff = SkotOS::XMLObject.diff_dirs(*args)
+if File.directory?(ARGV[0])
+    diff = SkotOS::XMLObject.diff_dirs(*ARGV)
     if diff.empty?
         puts "No difference."
     else
         puts diff.join("\n\n=====\n\n")
     end
 else
-    obj1 = SkotOS::XMLObject.from_file(args[0])
-    obj2 = SkotOS::XMLObject.from_file(args[1])
+    obj1 = SkotOS::XMLObject.from_file(ARGV[0])
+    obj2 = SkotOS::XMLObject.from_file(ARGV[1])
     diff = SkotOS::XMLObject.diff_between(obj1, obj2)
     if diff.empty?
         puts "No difference."
