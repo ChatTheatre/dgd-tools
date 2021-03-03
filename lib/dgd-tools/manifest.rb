@@ -422,7 +422,7 @@ module DGD::Manifest
     "app_root": "app",
     "goods": [
         "# This is an example goods file - substitute your own.",
-        "https://raw.githubusercontent.com/noahgibbs/dgd-tools/main/goods/skotos_httpd.goods"
+        "https://raw.githubusercontent.com/ChatTheatre/dgd-tools/main/goods/skotos_httpd.goods"
     ],
     "unbundled_goods": [
         {
