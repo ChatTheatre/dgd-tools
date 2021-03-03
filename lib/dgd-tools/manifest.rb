@@ -76,7 +76,8 @@ module DGD::Manifest
 
             raise("No manifest file!") if @no_manifest_file
 
-            @manifest_file.specs.each do |spec|
+            # For each spec, put its dependencies before itself in order
+            @manifest_file.ordered_specs.each do |spec|
                 spec_git_repo = spec.source
                 spec_git_repo.use_details(spec.source_details)  # This sets things like checked-out branch
 
@@ -154,8 +155,13 @@ module DGD::Manifest
                     sd_hash[:non_dirs].each do |from_file|
                         to_file = from_file.sub(sd_hash[:from], "#{dgd_root(location)}/#{sd_hash[:to]}")
                         to_dir = File.dirname(to_file)
-                        FileUtils.mkdir_p to_dir
-                        FileUtils.cp from_file, to_file
+                        begin
+                            FileUtils.mkdir_p to_dir
+                            FileUtils.cp from_file, to_file
+                        rescue
+                            puts "Error when copying: #{from_file} -> #{to_file} in #{sd_hash.inspect}"
+                            raise
+                        end
                     end
                 end
             end
@@ -188,7 +194,7 @@ module DGD::Manifest
         def initialize(repo, git_url)
             @git_url = git_url
             @repo = repo
-            local_path = git_url.tr("/\\", "_")
+            local_path = git_url.tr("/\\ ", "_")
             @local_dir = "#{@repo.shared_dir}/git/#{local_path}"
 
             if File.directory?(@local_dir)
@@ -307,6 +313,8 @@ module DGD::Manifest
         def unbundled_json_to_spec(fields)
             source = nil
             source_details = nil
+            dependencies = []
+
             if fields["git"]
                 raise "A git source requires a git url: #{fields.inspect}!" unless fields["git"]["url"]
                 source = @repo.git_repo(fields["git"]["url"])
@@ -319,8 +327,40 @@ module DGD::Manifest
                 raise "Paths in Goods files must map strings to strings! #{fields["paths"].inspect}"
             end
 
-            spec = GoodsSpec.new(@repo, name: fields["name"], source: source, source_details: source_details, paths: fields["paths"])
+            if fields["dependencies"]
+                # For now, permit a single string as a dependency.
+                fields["dependencies"] = [ fields["dependencies"] ] if fields["dependencies"].is_a?(String)
+
+                url = nil
+                fields["dependencies"].each do |dep|
+                    if dep.is_a?(String)
+                        url = dep
+                    elsif dep.is_a?(Hash)
+                        raise "Currently only URL-based dependencies on Goods files are supported!" unless dep["url"]
+                        url = dep["url"]
+                    else
+                        raise "Unexpected dependency type #{dep.class} when parsing DGD Manifest specs, item: #{dep.inspect}"
+                    end
+                    dep_fields = JSON.parse URI.open(url).read
+                    dependencies.push unbundled_json_to_spec(dep_fields)
+                end
+            end
+
+            spec = GoodsSpec.new(@repo, name: fields["name"], source: source, source_details: source_details, paths: fields["paths"], dependencies: dependencies)
             return spec
+        end
+
+        def ordered_specs
+            @specs.flat_map do |s|
+                deps = [s]
+                deps_to_add = s.dependencies
+                while(deps_to_add.size > 0)
+                    next_deps = deps_to_add.flat_map { |dep| dep.dependencies }
+                    deps = deps_to_add + deps
+                    deps_to_add = next_deps
+                end
+                deps
+            end
         end
     end
 
@@ -330,8 +370,9 @@ module DGD::Manifest
         attr_reader :source
         attr_reader :source_details
         attr_reader :paths
+        attr_reader :dependencies
 
-        def initialize(repo, name:, source:, source_details: {}, paths:)
+        def initialize(repo, name:, source:, source_details: {}, paths:, dependencies:)
             @repo = repo
             @name = name
             @source = source
@@ -344,6 +385,7 @@ module DGD::Manifest
             end
 
             @paths = cleaned_paths
+            @dependencies = dependencies
         end
     end
 
