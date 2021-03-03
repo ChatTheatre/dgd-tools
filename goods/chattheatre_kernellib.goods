@@ -1,0 +1,12 @@
+{
+    "name": "ChatTheatre Kernellib",
+    "git": {
+        "url": "https://github.com/ChatTheatre/kernellib.git",
+        "branch": "master"
+    },
+    "paths": {
+    	"src/include/kernel": "include/kernel",
+    	"src/include/*.h": "include",
+    	"src/kernel": "kernel"
+    }
+}
