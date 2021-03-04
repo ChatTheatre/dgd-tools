@@ -64,7 +64,7 @@ module DGD::Manifest
             raise "Already have a dgd.manifest file!" unless @no_manifest_file
 
             @no_manifest_file = false
-            @manifest_file ||= AppFile.new(self, path)
+            @manifest_file ||= AppFile.new(self, path, shared_dir: shared_dir)
         end
 
         protected
@@ -223,15 +223,18 @@ module DGD::Manifest
         end
     end
 
+    # This class parses the DGD manifest
     class AppFile
         attr_reader :path
         attr_reader :repo
         attr_reader :specs
         attr_reader :dgd_config
+        attr_reader :shared_dir
 
-        def initialize(repo, path)
+        def initialize(repo, path, shared_dir:)
             @path = path
             @repo = repo
+            @shared_dir = shared_dir
             raise("No such dgd.manifest file as #{path.inspect}!") unless File.exist?(path)
             contents = AppFile.parse_manifest_file(path)
 
@@ -296,7 +299,10 @@ module DGD::Manifest
 
                 @specs += contents["goods"].map do |goods_url|
                     begin
-                        json_contents = JSON.parse(URI.open(goods_url).read)
+                        text_contents = URI.open(goods_url).read
+                        local_path = shared_dir + "/goods/" + goods_url.tr("/\\ ", "_") + ".goods"
+                        File.open(local_path, "wb") { |f| f.write(text_contents) }
+                        json_contents = JSON.parse text_contents
                     rescue
                         STDERR.puts "Error reading or parsing by URL: #{goods_url.inspect}"
                         raise
@@ -331,17 +337,22 @@ module DGD::Manifest
                 # For now, permit a single string as a dependency.
                 fields["dependencies"] = [ fields["dependencies"] ] if fields["dependencies"].is_a?(String)
 
-                url = nil
+                goods_url = nil
                 fields["dependencies"].each do |dep|
                     if dep.is_a?(String)
-                        url = dep
+                        goods_url = dep
                     elsif dep.is_a?(Hash)
                         raise "Currently only URL-based dependencies on Goods files are supported!" unless dep["url"]
-                        url = dep["url"]
+                        goods_url = dep["url"]
                     else
                         raise "Unexpected dependency type #{dep.class} when parsing DGD Manifest specs, item: #{dep.inspect}"
                     end
-                    dep_fields = JSON.parse URI.open(url).read
+
+                    text_contents = URI.open(goods_url).read
+                    local_path = shared_dir + "/goods/" + goods_url.tr("/\\ ", "_") + ".goods"
+                    File.open(local_path, "wb") { |f| f.write(text_contents) }
+                    dep_fields = JSON.parse text_contents
+
                     dependencies.push unbundled_json_to_spec(dep_fields)
                 end
             end
