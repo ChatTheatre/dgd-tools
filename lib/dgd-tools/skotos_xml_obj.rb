@@ -46,11 +46,13 @@ class SkotOS::XMLObject
             of1.close
             of2.close
 
-            diff_opts = [ "-c" ]
-            diff_opts += [ "-w", "-B" ] if self.ignore_whitespace
+            diff_opts = [ "c" ]
+            diff_opts += [ "b", "B" ] if self.ignore_whitespace
 
             # Diff 'fails' if there's a difference between the two files.
-            diff = system_call("diff #{diff_opts.join(" ")} #{of1.path} #{of2.path}", fail_ok: true)
+            cmd = "diff -#{diff_opts.join("")} #{of1.path} #{of2.path}"
+            #puts "Diff command: #{cmd}"
+            diff = system_call(cmd, fail_ok: true)
             diff.sub!(of1.path, o1_name)
             diff.sub!(of2.path, o2_name)
         ensure
@@ -115,10 +117,15 @@ class SkotOS::XMLObject
         end
 
         rev = noko_single_node(doc.root, "Core:Property", attrs: { "property" => "revisions" })
-        rev.remove if rev
+        noko_remove(rev) if rev
 
         list = noko_single_node(doc.root, "Core:Property", attrs: { "property" => "#list#" })
         list.remove if list
+
+        properties = noko_with_name_and_attrs(doc.root, "Core:Property")
+        properties.each do |prop_node|
+            prop_node.remove if prop_node.attribute("property").value.start_with?("sys:sync")
+        end
 
         if self.merry_only
             # Kill off all the non-Merry nodes
@@ -128,7 +135,7 @@ class SkotOS::XMLObject
         if self.ignore_types
             self.ignore_types.each do |ignored_type|
                 skipped = noko_with_name_and_attrs(doc.root, ignored_type)
-                skipped.each { |n| n.remove }
+                skipped.each { |n| noko_remove(n) }
             end
         end
 
@@ -142,6 +149,12 @@ class SkotOS::XMLObject
                 next_text.remove
             end
         end
+    end
+
+    def self.noko_remove(node)
+        nn = node.next
+        nn.remove if nn.is_a?(Nokogiri::XML::Text)
+        node.remove
     end
 
     def self.noko_single_node(node, name, attrs: {})
