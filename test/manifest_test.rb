@@ -21,18 +21,18 @@ class DGDToolsTest < Minitest::Test
     end
 
     def test_empty_precheck
-        with_repo_for_data_dir("empty") { |repo| repo.precheck(".") }
+        with_repo_for_data_dir("empty") { |repo| repo.precheck(".", verbose: false) }
     end
 
     def test_empty_repo_copies_no_files
         with_repo_for_data_dir("empty") do |repo|
-            assert_equal [], repo.send(:assembly_operations, ".")
+            assert_equal [], repo.send(:assembly_operations, ".", verbose: false)
         end
     end
 
     def test_app_only_repo_copies_files
         with_repo_for_data_dir("app_only") do |repo|
-            ops = repo.send(:assembly_operations, ".")
+            ops = repo.send(:assembly_operations, ".", verbose: false)
             assert_equal [
                 {
                     :from => "#{@data_dir}/app_only/app",
@@ -46,7 +46,7 @@ class DGDToolsTest < Minitest::Test
 
     def test_app_overwrite_has_correct_order
         with_repo_for_data_dir("app_overwrite") do |repo|
-            ops = repo.send(:assembly_operations, ".")
+            ops = repo.send(:assembly_operations, ".", verbose: false)
             assert_equal [
 
                 {

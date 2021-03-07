@@ -22,7 +22,7 @@ module DGD::Manifest
         puts "Running command: #{cmd.inspect}..."
         system(cmd, out: $stdout, err: :out)
         unless $?.success?
-            raise "Error running command: #{cmd.inspect}!"
+            raise "Error running command in #{Dir.pwd}: #{cmd.inspect}!"
         end
     end
 
@@ -71,7 +71,7 @@ module DGD::Manifest
 
         # This includes files to assemble... But also subdirectories and commands. This format is
         # unstable and ugly, and should not be exposed to outside parties who might later depend on it.
-        def assembly_operations(location)
+        def assembly_operations(location, verbose:)
             operations = []
 
             raise("No manifest file!") if @no_manifest_file
@@ -126,25 +126,29 @@ module DGD::Manifest
             "#{File.expand_path(location)}/#{GENERATED_ROOT}"
         end
 
-        def assemble_app(location)
+        def assemble_app(location, verbose:)
             Dir[File.join(dgd_root(location), "*")].each { |dir| FileUtils.rm_rf dir }
 
-            write_app_files(location)
+            write_app_files(location, verbose: verbose)
         end
 
-        def update_app(location)
-            write_app_files(location)  # TODO: maybe check files dates? Some way to do update-only
+        def update_app(location, verbose:)
+            write_app_files(location, verbose: verbose)
         end
 
         protected
 
-        def write_app_files(location)
+        def write_app_files(location, verbose:)
             Dir.chdir(location) do
                 write_config_file("#{location}/dgd.config")
                 FileUtils.mkdir_p("#{location}/state") # Statedir for statedumps, editor files, etc.
 
-                assembly_operations(location).each do |sd_hash|
+                assembly_operations(location, verbose: verbose).each do |sd_hash|
                     to_path = "#{dgd_root(location)}/#{sd_hash[:to]}"
+
+                    if verbose
+                        puts "  Copy #{sd_hash[:from]} -> #{sd_hash[:to]}, files #{sd_hash[:non_dirs].join(", ")}"
+                    end
 
                     # Make appropriate dirs, including empty ones
                     sd_hash[:dirs].each do |dir|
@@ -169,8 +173,8 @@ module DGD::Manifest
 
         public
 
-        def precheck(location)
-            all_files = assembly_operations(location).flat_map { |sd| sd[:non_dirs] }
+        def precheck(location, verbose:)
+            all_files = assembly_operations(location, verbose: verbose).flat_map { |sd| sd[:non_dirs] }
 
             if all_files.size != all_files.uniq.size
                 repeated = all_files.uniq.select { |f| all_files.count(f) > 1 }
@@ -287,6 +291,10 @@ module DGD::Manifest
             @specs = []
 
             @dgd_config = DGDRuntimeConfig.new (contents["config"] || {})
+
+            if contents["app_root"]
+                raise "App_root must now be inside config block!"
+            end
 
             if contents["unbundled_goods"]
                 raise "Unbundled_goods must be an array!" unless contents["unbundled_goods"].is_a?(Array)

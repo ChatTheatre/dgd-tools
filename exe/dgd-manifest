@@ -1,70 +1,82 @@
 #!/usr/bin/env ruby
 
+require "optimist"
 require "dgd-tools/manifest"
 
-if ARGV.size == 0
-    ARGV.push "install"
+SUB_COMMANDS = %w(new test install update server)
+
+OPTS = Optimist::options do
+    version "DGD-tools version #{DGD::VERSION}"
+    banner <<BANNER
+Use dgd.manifest to assemble your DGD application.
+
+Available subcommands:
+  new [project_name]: create a new DGD-manifest project
+  test: make sure the dgd.manifest file is well-formed and usable
+  install: compile the DGD application to a config file and a root directory
+  update: copy files into generated root directory but do *not* clear 'extra' files (e.g. user data)
+  server: run DGD with the generated root and configuration
+
+Available options:
+BANNER
+    opt :verbose, "Print verbose output where available"
+    stop_on SUB_COMMANDS
 end
 
-if ARGV == ["--version"]
-    puts "dgd-tools version #{DGD::VERSION}"
-    exit
-end
+ARGV.push("install") if ARGV.size == 0
+cmd = ARGV.shift
+cmd_opts = case cmd
+    when "test"
+        #Optimist::options do
+        #  opt :harsh, "check as exactly as possible"
+        #end
 
-if ARGV.size == 1 && ["-h", "--help"].include?(ARGV[0])
-    puts <<HELP_INFO
-dgd-manifest commands:
+        unless File.exist?("dgd.manifest")
+            raise "I don't see a dgd.manifest file in this directory!"
+        end
+        puts "Running dgd.manifest installer..."
+        repo = DGD::Manifest::Repo.new
+        repo.manifest_file("dgd.manifest")
+        repo.precheck(".", verbose: verbose)
+        puts "Verified Manifest packages: this looks likely correct."
 
-new [project_name]: create a new DGD-manifest project
-test: make sure the dgd.manifest file is well-formed and usable
-install: compile the DGD application to a config file and a root directory
-HELP_INFO
-    exit
-end
+    when "install"
+        unless File.exist?("dgd.manifest")
+            raise "I don't see a dgd.manifest file in this directory!"
+        end
+        puts "Running DGD Manifest installer..."
+        repo = DGD::Manifest::Repo.new
+        repo.manifest_file("dgd.manifest")
+        current_dir = File.expand_path(".")
+        repo.precheck(current_dir)
+        repo.assemble_app(current_dir, verbose: OPTS[:verbose])
+        puts "Assembled DGD application into #{current_dir}"
 
-case ARGV[0]
-when "new"
-    unless ARGV.size == 2
-        puts "Usage: dgd-manifest new [project name]"
-        raise "Must supply exactly one argument to dgd-manifest new!"
+    when "update"
+        unless File.exist?("dgd.manifest")
+            raise "I don't see a dgd.manifest file in this directory!"
+        end
+        puts "Running DGD Manifest installer..."
+        repo = DGD::Manifest::Repo.new
+        repo.manifest_file("dgd.manifest")
+        current_dir = File.expand_path(".")
+        repo.precheck(current_dir, verbose: OPTS[:verbose])
+        repo.update_app(current_dir, verbose: OPTS[:verbose])
+        puts "Updated DGD application in #{current_dir}"
+
+    when "server"
+        puts "Starting DGD server..."
+        DGD::Manifest.system_call("~/.dgd-tools/dgd/bin/dgd dgd.config")
+
+    when "new"
+        unless ARGV.size == 1
+            puts "Usage: dgd-manifest new [project name]"
+            Optimist::die "Must supply exactly one argument to dgd-manifest new!"
+        end
+        appdir = DGD::Manifest::AppDirectory.new(File.expand_path ARGV[0])
+        appdir.name = ARGV[0]
+        appdir.create!
+
+    else
+        Optimist::die "Unknown subcommand: #{cmd.inspect}"
     end
-    appdir = DGD::Manifest::AppDirectory.new(File.expand_path ARGV[1])
-    appdir.name = ARGV[1]
-    appdir.create!
-when "test"
-    unless File.exist?("dgd.manifest")
-        raise "I don't see a dgd.manifest file in this directory!"
-    end
-    puts "Running dgd.manifest installer..."
-    repo = DGD::Manifest::Repo.new
-    repo.manifest_file("dgd.manifest")
-    repo.precheck(".")
-    puts "Verified Manifest packages: this looks likely correct."
-when "install"
-    unless File.exist?("dgd.manifest")
-        raise "I don't see a dgd.manifest file in this directory!"
-    end
-    puts "Running DGD Manifest installer..."
-    repo = DGD::Manifest::Repo.new
-    repo.manifest_file("dgd.manifest")
-    current_dir = File.expand_path(".")
-    repo.precheck(current_dir)
-    repo.assemble_app(current_dir)
-    puts "Assembled DGD application into #{current_dir}"
-when "update"
-    unless File.exist?("dgd.manifest")
-        raise "I don't see a dgd.manifest file in this directory!"
-    end
-    puts "Running DGD Manifest installer..."
-    repo = DGD::Manifest::Repo.new
-    repo.manifest_file("dgd.manifest")
-    current_dir = File.expand_path(".")
-    repo.precheck(current_dir)
-    repo.update_app(current_dir)
-    puts "Updated DGD application in #{current_dir}"
-when "server"
-    puts "Starting DGD server..."
-    DGD::Manifest.system_call("~/.dgd-tools/dgd/bin/dgd dgd.config")
-else
-    raise "Unrecognised #{$0} command: #{ARGV[0].inspect}!"
-end
