@@ -48,7 +48,7 @@ cmd_opts = case cmd
         repo = DGD::Manifest::Repo.new
         repo.manifest_file("dgd.manifest")
         current_dir = File.expand_path(".")
-        repo.precheck(current_dir)
+        repo.precheck(current_dir, verbose: verbose)
         repo.assemble_app(current_dir, verbose: OPTS[:verbose])
         puts "Assembled DGD application into #{current_dir}"
 
