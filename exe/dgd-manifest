@@ -37,7 +37,7 @@ cmd_opts = case cmd
         puts "Running dgd.manifest installer..."
         repo = DGD::Manifest::Repo.new
         repo.manifest_file("dgd.manifest")
-        repo.precheck(".", verbose: verbose)
+        repo.precheck(".", verbose: OPTS[:verbose])
         puts "Verified Manifest packages: this looks likely correct."
 
     when "install"
@@ -48,7 +48,7 @@ cmd_opts = case cmd
         repo = DGD::Manifest::Repo.new
         repo.manifest_file("dgd.manifest")
         current_dir = File.expand_path(".")
-        repo.precheck(current_dir, verbose: verbose)
+        repo.precheck(current_dir, verbose: OPTS[:verbose])
         repo.assemble_app(current_dir, verbose: OPTS[:verbose])
         puts "Assembled DGD application into #{current_dir}"
 
