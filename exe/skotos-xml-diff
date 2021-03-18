@@ -14,6 +14,7 @@ Usage:
     skotos-xml-diff [options] <file_or_dir_1> <file_or_dir_2>
 where [options] are:
 BANNER
+    opt :version, "Print DGD version and exit"
     opt :merry_only, "Only diff Merry scripts"
     opt :ignore_whitespace, "Ignore whitespace in final diff"
     opt :ignore_types, "Comma-separated list of XML node types to ignore (e.g. Combat:Base,Base:Exit)", type: :string
