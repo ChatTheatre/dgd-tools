@@ -308,7 +308,7 @@ module DGD::Manifest
                 @specs += contents["goods"].map do |goods_url|
                     begin
                         text_contents = URI.open(goods_url).read
-                        local_path = shared_dir + "/goods/" + goods_url.tr("/\\ ", "_") + ".goods"
+                        local_path = shared_dir + "/goods/" + goods_url.tr("/\\ ", "_")
                         File.open(local_path, "wb") { |f| f.write(text_contents) }
                         json_contents = JSON.parse text_contents
                     rescue
@@ -357,7 +357,7 @@ module DGD::Manifest
                     end
 
                     text_contents = URI.open(goods_url).read
-                    local_path = shared_dir + "/goods/" + goods_url.tr("/\\ ", "_") + ".goods"
+                    local_path = shared_dir + "/goods/" + goods_url.tr("/\\ ", "_")
                     File.open(local_path, "wb") { |f| f.write(text_contents) }
                     dep_fields = JSON.parse text_contents
 
