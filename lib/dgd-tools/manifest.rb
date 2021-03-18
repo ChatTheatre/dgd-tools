@@ -562,15 +562,18 @@ FILE_CONTENTS
 
         def config_to_ports(data)
             if data.is_a?(Hash)
-                # TODO: verify that keys are IP addr strings and values are legal port numbers
-                return data
+                return data.map { |ip, port| [ip, Integer(port) ] }
             elsif data.is_a?(Array)
-                # TODO: verify that data is an array of legal integer port numbers
-                ports = {}
-                data.each { |p| ports["*"] = p }
+                if data[0].is_a?(Array)
+                    ports = data.map { |ip, port| [ip, Integer(port) ] }
+                    return ports
+                end
+
+                ports = data.map { |p| [ "*", Integer(p) ] }
+                STDERR.puts "Arrayified: #{ports.inspect}"
                 return ports
             elsif data.is_a?(Integer)
-                return { "*": data }
+                return [ [ "*", data ] ]
             else
                 raise "dgd-manifest: not sure how to get port data from a #{data.class.name} -- #{data.inspect}!"
             end
