@@ -35,7 +35,7 @@ module DGD::Doc
       data = @parser.parse(preproc_output)
       if data
         clean_tree(data)
-        puts data.inspect
+        #puts data.inspect
       else
         puts @parser.failure_reason
         puts @parser.failure_line
