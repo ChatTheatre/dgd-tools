@@ -125,13 +125,13 @@ grammar DGDGrammar
   end
 
   rule func_decl
-    (class_type WS function_declarator WS compound_statement) /
-    (class WS function_name ws '(' ws formals ws ')' WS compound_statement)
+    class_type WS function_declarator ws compound_statement /
+    class WS function_name ws '(' ws formals ws ')' WS compound_statement
   end
 
   rule class_type
-    ((class_spec WS)* type_spec) /
-    ((class_spec WS)* 'object' list_exp)
+    (class_spec WS)* type_spec /
+    (class_spec WS)* 'object' list_exp
   end
 
   rule data_declarator
@@ -140,26 +140,26 @@ grammar DGDGrammar
 
   rule function_name
     ident /
-    ('operator' ws '+') /
-    ('operator' ws '-') /
-    ('operator' ws '*') /
-    ('operator' ws '/') /
-    ('operator' ws '%') /
-    ('operator' ws '&') /
-    ('operator' ws '^') /
-    ('operator' ws '|') /
-    ('operator' ws '<') /
-    ('operator' ws '>') /
-    ('operator' ws '>=') /
-    ('operator' ws '<=') /
-    ('operator' ws '<<') /
-    ('operator' ws '>>') /
-    ('operator' ws '~') /
-    ('operator' ws '++') /
-    ('operator' ws '--') /
-    ('operator' ws '[' ws ']') /
-    ('operator' ws '[' ws ']' ws '=') /
-    ('operator' ws '[' ws '..' ws ']')
+    'operator' ws '+' /
+    'operator' ws '-' /
+    'operator' ws '*' /
+    'operator' ws '/' /
+    'operator' ws '%' /
+    'operator' ws '&' /
+    'operator' ws '^' /
+    'operator' ws '|' /
+    'operator' ws '<' /
+    'operator' ws '>' /
+    'operator' ws '>=' /
+    'operator' ws '<=' /
+    'operator' ws '<<' /
+    'operator' ws '>>' /
+    'operator' ws '~' /
+    'operator' ws '++' /
+    'operator' ws '--' /
+    'operator' ws '[' ws ']' /
+    'operator' ws '[' ws ']' ws '=' /
+    'operator' ws '[' ws '..' ws ']'
   end
 
   rule function_declarator
@@ -189,28 +189,28 @@ grammar DGDGrammar
   rule statement
     list_exp /
     compound_statement /
-    ('if' ws '(' ws list_exp ws ')' ws statement (WS 'else' statement)?) /
-    ('do' WS statement WS 'while' ws '(' ws list_exp ws ')' ws ';') /
-    ('while' ws '(' ws list_exp ws ')' ws statement) /
-    ('for' ws '(' ws list_exp? ws ';' ws list_exp? ws ';' ws list_exp? ws ')' ws statement) /
-    ('rlimits' ws '(' ws list_exp ws ';' ws list_exp ws ')' ws compound_statement) /
-    ('catch' ws compound_statement ws ':' statement) /
-    ('catch' ws compound_statement) /
-    ('switch' ws '(' ws list_exp ws ')' ws compound_statement) /
-    ('case' WS exp ws ':' ws statement) /
-    ('case' WS exp ws '..' ws exp ws ':' statement) /
-    ('default' ws ':' ws statement) /
-    (ident ws ':' ws statement) /  # label statement
-    ('goto' WS ident ws ';') /
-    ('break' ws ';') /
-    ('continue' ws ';') /
-    ('return' WS list_exp WS ';') /
-    ('return' ws ';') /
-    (';')
+    'if' ws '(' ws list_exp ws ')' ws statement (WS 'else' statement)? /
+    'do' WS statement WS 'while' ws '(' ws list_exp ws ')' ws ';' /
+    'while' ws '(' ws list_exp ws ')' ws statement /
+    'for' ws '(' ws list_exp? ws ';' ws list_exp? ws ';' ws list_exp? ws ')' ws statement /
+    'rlimits' ws '(' ws list_exp ws ';' ws list_exp ws ')' ws compound_statement /
+    'catch' ws compound_statement ws ':' statement /
+    'catch' ws compound_statement /
+    'switch' ws '(' ws list_exp ws ')' ws compound_statement /
+    'case' WS exp ws ':' ws statement /
+    'case' WS exp ws '..' ws exp ws ':' statement /
+    'default' ws ':' ws statement /
+    ident ws ':' ws statement /  # label statement
+    'goto' WS ident ws ';' /
+    'break' ws ';' /
+    'continue' ws ';' /
+    'return' WS list_exp WS ';' /
+    'return' ws ';' /
+    ';'
   end
 
   rule compound_statement
-    '{' ws locals ws list_statement ws '}'
+    '{' ws locals ws statements ws '}'
   end
 
   rule function_call
@@ -219,113 +219,132 @@ grammar DGDGrammar
     (ident ws '::' ws function_name)
   end
 
+  rule list_exp
+    exp / exp ws ',' ws list_exp
+  end
+
+  rule opt_list_exp
+    '' / list_exp
+  end
+
+  rule exp
+    cond_exp /
+    cond_exp ws '=' ws exp /
+    cond_exp ws '+=' ws exp /
+    cond_exp ws '-=' ws exp /
+    cond_exp ws '*=' ws exp /
+    cond_exp ws '/=' ws exp /
+    cond_exp ws '%=' ws exp /
+    cond_exp ws '<<=' ws exp /
+    cond_exp ws '>>=' ws exp /
+    cond_exp ws '&=' ws exp /
+    cond_exp ws '^=' ws exp /
+    cond_exp ws '|=' ws exp
+  end
+
+  rule cond_exp
+    or_exp / or_exp ws '?' ws list_exp ws ':' cond_exp
+  end
+
+  rule or_exp
+    and_exp / and_exp ws '||' ws or_exp
+  end
+
+  rule and_exp
+    bitor_exp / bitor_exp ws '&&' ws and_exp
+  end
+
+  rule bitor_exp
+    bitxor_exp / bitxor_exp ws '|' ws bitor_exp
+  end
+
+  rule bitxor_exp
+    bitand_exp / bitand_exp ws '^' ws bitxor_exp
+  end
+
+  rule bitand_exp
+    equ_exp / equ_exp ws '&' bitand_exp
+  end
+
+  rule equ_exp
+    rel_exp / rel_exp ws '==' ws equ_exp / rel_exp ws '!=' ws equ_exp
+  end
+
+  rule rel_exp
+    shift_exp /
+    shift_exp ws '<' ws rel_exp /
+    shift_exp ws '>' ws rel_exp /
+    shift_exp ws '<=' ws rel_exp /
+    shift_exp ws '>=' ws rel_exp
+  end
+
+  rule shift_exp
+    add_exp /
+    add_exp ws '<<' ws shift_exp /
+    add_exp ws '>>' ws shift_exp
+  end
+
+  rule add_exp
+    mult_exp /
+    mult_exp ws '+' ws add_exp /
+    mult_exp ws '-' ws add_exp
+  end
+
+  rule mult_exp
+    cast_exp /
+    cast_exp ws '*' ws mult_exp /
+    cast_exp ws '/' ws mult_exp /
+    cast_exp ws '%' ws mult_exp
+  end
+
+  rule cast_exp
+    prefix_exp / '(' ws class_type ws stars ws ')' ws cast_exp
+  end
+
+  rule prefix_exp
+    postfix_exp /
+    '++' ws cast_exp /
+    '--' ws cast_exp /
+    '+' ws cast_exp /
+    '-' ws cast_exp /
+    '!' ws cast_exp /
+    '~' ws cast_exp
+  end
+
+  rule postfix_exp
+    exp2 (ws ('++' / '--'))?
+  end
+
+  rule exp2
+    exp1 ((ws '[' ws list_exp ws ']') / (ws '[' ws list_exp ws '..' ws list_exp ws ']'))* /
+    exp1 ws '->' ws ident ws '(' ws (arg_list ws)? ')' /
+    exp1 ws '<-' ws string_exp
+  end
+
+  rule exp1
+    decimal /
+    octal /
+    hexadecimal /
+    simple_char /
+    complex_char /
+    float /
+    'nil' /
+    string /
+    '(' ws '{' ws opt_arg_list_comma ws '}' ws ')' /
+    '(' ws '[' ws opt_assoc_list_comma ws ']' ws ')' /
+    ident /
+    '::' ws ident /
+    '(' ws list_exp ws ')' /
+    function_call ws '(' ws (arg_list ws)? ')' /
+    'catch' ws '(' list_exp ws ')' /
+    'new' (WS 'object')? string_exp (ws '(' (arg_list)? ws ')')?
+  end
+
 end
 
 
 #DGD Grammar:
 #
-#FunctionCall: FunctionName                                              \
-#FunctionCall: '::' FunctionName                                         \
-#FunctionCall: ident '::' FunctionName                                   \
-#"\
-#Exp1: decimal                                           ? expIntDec     \
-#Exp1: octal                                             ? expIntOct     \
-#Exp1: hexadecimal                                       ? expIntHex     \
-#Exp1: simple_char                                       ? simpleChar    \
-#Exp1: complex_char                                      ? complexChar   \
-#Exp1: float                                             ? expFloat      \
-#Exp1: 'nil'                                             ? expNil        \
-#Exp1: String                                                            \
-#Exp1: '(' '{' OptArgListComma '}' ')'                   ? expArray      \
-#Exp1: '(' '[' OptAssocListComma ']' ')'                 ? expMapping    \
-#Exp1: ident                                             ? expVar        \
-#Exp1: '::' ident                                        ? expGlobalVar  \
-#Exp1: '(' ListExp ')'                                   ? parsed_1_     \
-#Exp1: FunctionCall '(' OptArgList ')'                   ? expFuncall    \
-#Exp1: 'catch' '(' ListExp ')'                           ? expCatch      \
-#Exp1: 'new' OptObject StringExp                         ? expNew1       \
-#Exp1: 'new' OptObject StringExp '(' OptArgList ')'      ? expNew2       \
-#Exp1: Exp2 '->' ident '(' OptArgList ')'                ? expCallOther  \
-#Exp1: Exp2 '<-' StringExp                               ? expInstance   " +
-#"\
-#Exp2: Exp1                                                              \
-#Exp2: Exp2 '[' ListExp ']'                              ? expIndex      \
-#Exp2: Exp2 '[' ListExp '..' ListExp ']'                 ? expRange      " +
-#"\
-#PostfixExp: Exp2                                                        \
-#PostfixExp: PostfixExp '++'                             ? expPostIncr   \
-#PostfixExp: PostfixExp '--'                             ? expPostDecr   " +
-#"\
-#PrefixExp: PostfixExp                                                   \
-#PrefixExp: '++' CastExp                                 ? expPreIncr    \
-#PrefixExp: '--' CastExp                                 ? expPreDecr    \
-#PrefixExp: '+' CastExp                                  ? expPlus       \
-#PrefixExp: '-' CastExp                                  ? expMinus      \
-#PrefixExp: '!' CastExp                                  ? expNot        \
-#PrefixExp: '~' CastExp                                  ? expNegate     " +
-#"\
-#CastExp: PrefixExp                                                      \
-#CastExp: '(' ClassType Stars ')' CastExp                ? expCast       " +
-#"\
-#MultExp: CastExp                                                        \
-#MultExp: MultExp '*' CastExp                            ? expMult       \
-#MultExp: MultExp '/' CastExp                            ? expDiv        \
-#MultExp: MultExp '%' CastExp                            ? expMod        " +
-#"\
-#AddExp: MultExp                                                         \
-#AddExp: AddExp '+' MultExp                              ? expAdd        \
-#AddExp: AddExp '-' MultExp                              ? expSub        " +
-#"\
-#ShiftExp: AddExp                                                        \
-#ShiftExp: ShiftExp '<<' AddExp                          ? expLShift     \
-#ShiftExp: ShiftExp '>>' AddExp                          ? expRShift     " +
-#"\
-#RelExp: ShiftExp                                                        \
-#RelExp: RelExp '<' ShiftExp                             ? expLess       \
-#RelExp: RelExp '>' ShiftExp                             ? expGreater    \
-#RelExp: RelExp '<=' ShiftExp                            ? expLessEq     \
-#RelExp: RelExp '>=' ShiftExp                            ? expGreaterEq  " +
-#"\
-#EquExp: RelExp                                                          \
-#EquExp: EquExp '==' RelExp                              ? expEqual      \
-#EquExp: EquExp '!=' RelExp                              ? expUnequal    " +
-#"\
-#BitandExp: EquExp                                                       \
-#BitandExp: BitandExp '&' EquExp                         ? expAnd        " +
-#"\
-#BitxorExp: BitandExp                                                    \
-#BitxorExp: BitxorExp '^' BitandExp                      ? expXor        " +
-#"\
-#BitorExp: BitxorExp                                                     \
-#BitorExp: BitorExp '|' BitxorExp                        ? expOr         " +
-#"\
-#AndExp: BitorExp                                                        \
-#AndExp: AndExp '&&' BitorExp                            ? expLand       " +
-#"\
-#OrExp: AndExp                                                           \
-#OrExp: OrExp '||' AndExp                                ? expLor        " +
-#"\
-#CondExp: OrExp                                                          \
-#CondExp: OrExp '?' ListExp ':' CondExp                  ? expQuest      " +
-#"\
-#Exp: CondExp                                                            \
-#Exp: CondExp '=' Exp                                    ? expAssign     \
-#Exp: CondExp '+=' Exp                                   ? expAsgnAdd    \
-#Exp: CondExp '-=' Exp                                   ? expAsgnSub    \
-#Exp: CondExp '*=' Exp                                   ? expAsgnMult   \
-#Exp: CondExp '/=' Exp                                   ? expAsgnDiv    \
-#Exp: CondExp '%=' Exp                                   ? expAsgnMod    \
-#Exp: CondExp '<<=' Exp                                  ? expAsgnLShift \
-#Exp: CondExp '>>=' Exp                                  ? expAsgnRShift \
-#Exp: CondExp '&=' Exp                                   ? expAsgnAnd    \
-#Exp: CondExp '^=' Exp                                   ? expAsgnXor    \
-#Exp: CondExp '|=' Exp                                   ? expAsgnOr     " +
-#"\
-#ListExp: Exp                                                            \
-#ListExp: ListExp ',' Exp                                ? expComma      \
-#OptListExp:                                             ? opt           \
-#OptListExp: ListExp                                                     " +
-#"\
 #ArgList: Exp                                                            \
 #ArgList: ArgList ',' Exp                                                \
 #OptArgList:                                             ? noArguments   \
