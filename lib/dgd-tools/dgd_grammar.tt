@@ -1,10 +1,10 @@
 grammar DGDGrammar
   rule source_file
-    ws inherit* ws top_level_decl* ws
+    ws (inherit ws)* (top_level_decl ws)*
   end
 
   rule inherit
-    ("private" WS)? "inherit" WS (ident WS)? ('object' WS)? string_exp ws ';' ws
+    ("private" WS)? "inherit" WS (ident WS)? ('object' WS)? string_exp ws ';' <Inherit>
   end
 
   rule top_level_decl
@@ -12,7 +12,7 @@ grammar DGDGrammar
   end
 
   rule ident
-    [a-zA-Z_] [a-zA-Z_0-9]*
+    [a-zA-Z_] [a-zA-Z_0-9]* <Identifier>
   end
 
   rule c_comment
@@ -33,37 +33,37 @@ grammar DGDGrammar
       !["\n\\]
       .
       )*
-    '"'
+    '"' <StringLiteral>
   end
 
   rule complex_string
-    '"' ( ((!["\n\\] ) .) / . )+   '"'
+    '"' ( ((!["\n\\] ) .) / . )+ '"' <StringLiteral>
   end
 
   rule simple_char
-    "'" ((!['\n\\]) .)+ "'"
+    "'" ((!['\n\\]) .)+ "'" <CharLiteral>
   end
 
   rule complex_char
-    "'" (((!['\n\\]) .) / ("\\" .))+ "'"
+    "'" (((!['\n\\]) .) / ("\\" .))+ "'" <CharLiteral>
   end
 
   rule decimal
-    [1-9] [0-9]*
+    [1-9] [0-9]* <DecimalLiteral>
   end
 
   rule octal
-    '0' [0-7]*
+    '0' [0-7]* <OctalLiteral>
   end
 
   rule hexadecimal
-    '0' [xX] [a-fA-F0-9]+
+    '0' [xX] [a-fA-F0-9]+ <HexadecimalLiteral>
   end
 
   rule float
-    ([0-9]+ "." [0-9]+ ([eE] [-+]? [0-9]+)?) /
-    ("." [0-9]+ ([eE] [-+]? [0-9]+)?) /
-    ([0-9]+ [eE] [-+]? [0-9]+)
+    ([0-9]+ "." [0-9]+ ([eE] [-+]? [0-9]+)?) <FloatLiteral> /
+    ("." [0-9]+ ([eE] [-+]? [0-9]+)?) <FloatLiteral> /
+    ([0-9]+ [eE] [-+]? [0-9]+) <FloatLiteral>
   end
 
   rule single_WS
@@ -79,19 +79,21 @@ grammar DGDGrammar
   end
 
   rule string
-    simple_string / complex_string
+    simple_string /
+    complex_string
   end
 
   rule string_exp
-    string / '(' ws composite_string ws ')'
+    string /
+    '(' ws composite_string ws ')'
   end
 
   rule composite_string
     string_exp / string_exp '+' composite_string
   end
 
-  rule class
-    class_spec / ((class_spec WS)+ class_spec)
+  rule klass
+    (class_spec WS)* class_spec
   end
 
   rule class_spec
@@ -107,9 +109,8 @@ grammar DGDGrammar
   end
 
   rule formals
-    '' /
-    'void' /
-    formal_list ws '...'?
+    # If you put these in a different order with '' and 'void' first, parses start failing. That seems bad.
+    formal_list (ws '...')? / '' / 'void'
   end
 
   rule formal_list
@@ -117,16 +118,17 @@ grammar DGDGrammar
   end
 
   rule formal
-    (class_type data_declarator) / ident
+    class_type data_declarator /
+    ident
   end
 
   rule data_decl
-    class_type WS declarators ws ';'
+    class_type WS declarators ws ';' <DataDecl>
   end
 
   rule func_decl
-    class_type WS function_declarator ws compound_statement /
-    class WS function_name ws '(' ws formals ws ')' WS compound_statement
+    class_type WS function_declarator ws compound_statement <FuncDecl> /
+    klass WS function_name ws '(' ws formals ws ')' ws compound_statement <FuncDecl>
   end
 
   rule class_type
@@ -180,10 +182,6 @@ grammar DGDGrammar
 
   rule statements
     (ws statement ws)*
-  end
-
-  rule compound_statement
-    locals statements
   end
 
   rule statement
@@ -317,7 +315,7 @@ grammar DGDGrammar
 
   rule exp2
     exp1 ((ws '[' ws list_exp ws ']') / (ws '[' ws list_exp ws '..' ws list_exp ws ']'))* /
-    exp1 ws '->' ws ident ws '(' ws (arg_list ws)? ')' /
+    exp1 ws '->' ws ident ws '(' ws opt_arg_list ws ')' /
     exp1 ws '<-' ws string_exp
   end
 
@@ -335,42 +333,41 @@ grammar DGDGrammar
     ident /
     '::' ws ident /
     '(' ws list_exp ws ')' /
-    function_call ws '(' ws (arg_list ws)? ')' /
+    function_call ws '(' ws opt_arg_list ws ')' /
     'catch' ws '(' list_exp ws ')' /
-    'new' (WS 'object')? string_exp (ws '(' (arg_list)? ws ')')?
+    'new' (WS 'object')? string_exp (ws '(' opt_arg_list ws ')')?
+  end
+
+  rule arg_list
+    exp /
+    exp ws ',' ws arg_list
+  end
+
+  rule opt_arg_list
+    '' /
+    arg_list /
+    arg_list ws '...'
+  end
+
+  rule opt_arg_list_comma
+    '' /
+    arg_list /
+    arg_list ws ','
+  end
+
+  rule assoc_list
+    assoc_pair /
+    assoc_pair ws ',' ws assoc_list
+  end
+
+  rule assoc_pair
+    exp ws ':' ws exp
+  end
+
+  rule opt_assoc_list_comma
+    '' /
+    assoc_list /
+    assoc_list ws ','
   end
 
 end
-
-
-#DGD Grammar:
-#
-#ArgList: Exp                                                            \
-#ArgList: ArgList ',' Exp                                                \
-#OptArgList:                                             ? noArguments   \
-#OptArgList: ArgList                                     ? arguments     \
-#OptArgList: ArgList '...'                               ? ellipsis      \
-#OptArgListComma:                                        ? list          \
-#OptArgListComma: ArgList                                ? noCommaList   \
-#OptArgListComma: ArgList ','                            ? noCommaList   " +
-#"\
-#AssocPair: Exp ':' Exp                                  ? parsed_0_2_   \
-#AssocList: AssocPair                                                    \
-#AssocList: AssocList ',' AssocPair                                      \
-#OptAssocListComma:                                      ? list          \
-#OptAssocListComma: AssocList                            ? noCommaList   \
-#OptAssocListComma: AssocList ','                        ? noCommaList   ",
-#
-#
-#DGD String:
-#unescaped = /[^\\\\]+/                                                  \
-#octal = /\\\\[0-7][0-7]?[0-7]?/                                         \
-#hexadecimal = /\\\\[xX][0-9a-fA-F][0-9a-fA-F]?/                         \
-#escaped = /\\\\./                                                       \
-#                                                                        \
-#String:                                                                 \
-#String: String Characters                                               \
-#Characters: unescaped                                                   \
-#Characters: octal                                       ? octal         \
-#Characters: hexadecimal                                 ? hexadecimal   \
-#Characters: escaped                                     ? escaped
