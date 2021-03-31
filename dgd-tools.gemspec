@@ -26,4 +26,5 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency "nokogiri", "~>1.10.5"
   spec.add_runtime_dependency "optimist", "~>3.0.1"
+  spec.add_runtime_dependency "treetop"
 end

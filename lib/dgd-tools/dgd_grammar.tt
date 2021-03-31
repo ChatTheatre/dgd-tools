@@ -1,0 +1,353 @@
+grammar DGDGrammar
+  rule source_file
+    inherit* top_level_decl*
+  end
+
+  rule inherit
+    ("private" WS)? "inherit" (ident)? ('object' WS)? string_exp ';'
+  end
+
+  rule top_level_decl
+    data_decl / func_decl
+  end
+
+  rule ident
+    [a-zA-Z_] [a-zA-Z_0-9]*
+  end
+
+  rule c_comment
+    '/*'
+    (
+      !'*/'
+      (. / "\n")
+    )*
+    '*/'
+  end
+
+  rule simple_string
+    '"' (
+      !["\n\\]
+      .
+      )*
+    '"'
+  end
+
+  rule complex_string
+    '"' ( ((!["\n\\] ) .) / . )+   '"'
+  end
+
+  rule simple_char
+    "'" ((!['\n\\]) .)+ "'"
+  end
+
+  rule complex_char
+    "'" (((!['\n\\]) .) / ("\\" .))+ "'"
+  end
+
+  rule decimal
+    [1-9] [0-9]*
+  end
+
+  rule octal
+    '0' [0-7]*
+  end
+
+  rule hexadecimal
+    '0' [xX] [a-fA-F0-9]+
+  end
+
+  rule float
+    ([0-9]+ "." [0-9]+ ([eE] [-+]? [0-9]+)?) /
+    ("." [0-9]+ ([eE] [-+]? [0-9]+)?) /
+    ([0-9]+ [eE] [-+]? [0-9]+)
+  end
+
+  rule single_WS
+    [ \t\v\f\r\n] / c_comment
+  end
+
+  rule ws
+    single_WS*
+  end
+
+  rule WS
+    single_WS+
+  end
+
+  rule string
+    simple_string / complex_string
+  end
+
+  rule string_exp
+    string / '(' ws composite_string ws ')'
+  end
+
+  rule composite_string
+    string_exp / string_exp '+' composite_string
+  end
+
+  rule class
+    class_spec / ((class_spec WS)+ class_spec)
+  end
+
+  rule class_spec
+    'private' / 'static' / 'atomic' / 'nomask' / 'varargs'
+  end
+
+  rule type_spec
+    'int' / 'float' / 'string' / 'object' / 'mapping' / 'mixed' / 'void'
+  end
+
+  rule stars
+    ('*' ws)*
+  end
+
+  rule formals
+    '' /
+    'void' /
+    formal_list ws '...'?
+  end
+
+  rule formal_list
+    formal (ws ',' ws formal)*
+  end
+
+  rule formal
+    (class_type data_declarator) / ident
+  end
+
+  rule data_decl
+    class_type WS declarators ws ';'
+  end
+
+  rule func_decl
+    (class_type WS function_declarator WS compound_statement) /
+    (class WS function_name ws '(' ws formals ws ')' WS compound_statement)
+  end
+
+  rule class_type
+    ((class_spec WS)* type_spec) /
+    ((class_spec WS)* 'object' list_exp)
+  end
+
+  rule data_declarator
+    stars ws ident
+  end
+
+  rule function_name
+    ident /
+    ('operator' ws '+') /
+    ('operator' ws '-') /
+    ('operator' ws '*') /
+    ('operator' ws '/') /
+    ('operator' ws '%') /
+    ('operator' ws '&') /
+    ('operator' ws '^') /
+    ('operator' ws '|') /
+    ('operator' ws '<') /
+    ('operator' ws '>') /
+    ('operator' ws '>=') /
+    ('operator' ws '<=') /
+    ('operator' ws '<<') /
+    ('operator' ws '>>') /
+    ('operator' ws '~') /
+    ('operator' ws '++') /
+    ('operator' ws '--') /
+    ('operator' ws '[' ws ']') /
+    ('operator' ws '[' ws ']' ws '=') /
+    ('operator' ws '[' ws '..' ws ']')
+  end
+
+  rule function_declarator
+    stars ws function_name ws '(' ws formals ws ')'
+  end
+
+  rule declarator
+    data_declarator / function_declarator
+  end
+
+  rule declarators
+    declarator (ws ',' ws declarator)*
+  end
+
+  rule locals
+    (ws data_decl ws)*
+  end
+
+  rule statements
+    (ws statement ws)*
+  end
+
+  rule compound_statement
+    locals statements
+  end
+
+  rule statement
+    list_exp /
+    compound_statement /
+    ('if' ws '(' ws list_exp ws ')' ws statement (WS 'else' statement)?) /
+    ('do' WS statement WS 'while' ws '(' ws list_exp ws ')' ws ';') /
+    ('while' ws '(' ws list_exp ws ')' ws statement) /
+    ('for' ws '(' ws list_exp? ws ';' ws list_exp? ws ';' ws list_exp? ws ')' ws statement) /
+    ('rlimits' ws '(' ws list_exp ws ';' ws list_exp ws ')' ws compound_statement) /
+    ('catch' ws compound_statement ws ':' statement) /
+    ('catch' ws compound_statement) /
+    ('switch' ws '(' ws list_exp ws ')' ws compound_statement) /
+    ('case' WS exp ws ':' ws statement) /
+    ('case' WS exp ws '..' ws exp ws ':' statement) /
+    ('default' ws ':' ws statement) /
+    (ident ws ':' ws statement) /  # label statement
+    ('goto' WS ident ws ';') /
+    ('break' ws ';') /
+    ('continue' ws ';') /
+    ('return' WS list_exp WS ';') /
+    ('return' ws ';') /
+    (';')
+  end
+
+  rule compound_statement
+    '{' ws locals ws list_statement ws '}'
+  end
+
+  rule function_call
+    function_name /
+    ('::' ws function_name) /
+    (ident ws '::' ws function_name)
+  end
+
+end
+
+
+#DGD Grammar:
+#
+#FunctionCall: FunctionName                                              \
+#FunctionCall: '::' FunctionName                                         \
+#FunctionCall: ident '::' FunctionName                                   \
+#"\
+#Exp1: decimal                                           ? expIntDec     \
+#Exp1: octal                                             ? expIntOct     \
+#Exp1: hexadecimal                                       ? expIntHex     \
+#Exp1: simple_char                                       ? simpleChar    \
+#Exp1: complex_char                                      ? complexChar   \
+#Exp1: float                                             ? expFloat      \
+#Exp1: 'nil'                                             ? expNil        \
+#Exp1: String                                                            \
+#Exp1: '(' '{' OptArgListComma '}' ')'                   ? expArray      \
+#Exp1: '(' '[' OptAssocListComma ']' ')'                 ? expMapping    \
+#Exp1: ident                                             ? expVar        \
+#Exp1: '::' ident                                        ? expGlobalVar  \
+#Exp1: '(' ListExp ')'                                   ? parsed_1_     \
+#Exp1: FunctionCall '(' OptArgList ')'                   ? expFuncall    \
+#Exp1: 'catch' '(' ListExp ')'                           ? expCatch      \
+#Exp1: 'new' OptObject StringExp                         ? expNew1       \
+#Exp1: 'new' OptObject StringExp '(' OptArgList ')'      ? expNew2       \
+#Exp1: Exp2 '->' ident '(' OptArgList ')'                ? expCallOther  \
+#Exp1: Exp2 '<-' StringExp                               ? expInstance   " +
+#"\
+#Exp2: Exp1                                                              \
+#Exp2: Exp2 '[' ListExp ']'                              ? expIndex      \
+#Exp2: Exp2 '[' ListExp '..' ListExp ']'                 ? expRange      " +
+#"\
+#PostfixExp: Exp2                                                        \
+#PostfixExp: PostfixExp '++'                             ? expPostIncr   \
+#PostfixExp: PostfixExp '--'                             ? expPostDecr   " +
+#"\
+#PrefixExp: PostfixExp                                                   \
+#PrefixExp: '++' CastExp                                 ? expPreIncr    \
+#PrefixExp: '--' CastExp                                 ? expPreDecr    \
+#PrefixExp: '+' CastExp                                  ? expPlus       \
+#PrefixExp: '-' CastExp                                  ? expMinus      \
+#PrefixExp: '!' CastExp                                  ? expNot        \
+#PrefixExp: '~' CastExp                                  ? expNegate     " +
+#"\
+#CastExp: PrefixExp                                                      \
+#CastExp: '(' ClassType Stars ')' CastExp                ? expCast       " +
+#"\
+#MultExp: CastExp                                                        \
+#MultExp: MultExp '*' CastExp                            ? expMult       \
+#MultExp: MultExp '/' CastExp                            ? expDiv        \
+#MultExp: MultExp '%' CastExp                            ? expMod        " +
+#"\
+#AddExp: MultExp                                                         \
+#AddExp: AddExp '+' MultExp                              ? expAdd        \
+#AddExp: AddExp '-' MultExp                              ? expSub        " +
+#"\
+#ShiftExp: AddExp                                                        \
+#ShiftExp: ShiftExp '<<' AddExp                          ? expLShift     \
+#ShiftExp: ShiftExp '>>' AddExp                          ? expRShift     " +
+#"\
+#RelExp: ShiftExp                                                        \
+#RelExp: RelExp '<' ShiftExp                             ? expLess       \
+#RelExp: RelExp '>' ShiftExp                             ? expGreater    \
+#RelExp: RelExp '<=' ShiftExp                            ? expLessEq     \
+#RelExp: RelExp '>=' ShiftExp                            ? expGreaterEq  " +
+#"\
+#EquExp: RelExp                                                          \
+#EquExp: EquExp '==' RelExp                              ? expEqual      \
+#EquExp: EquExp '!=' RelExp                              ? expUnequal    " +
+#"\
+#BitandExp: EquExp                                                       \
+#BitandExp: BitandExp '&' EquExp                         ? expAnd        " +
+#"\
+#BitxorExp: BitandExp                                                    \
+#BitxorExp: BitxorExp '^' BitandExp                      ? expXor        " +
+#"\
+#BitorExp: BitxorExp                                                     \
+#BitorExp: BitorExp '|' BitxorExp                        ? expOr         " +
+#"\
+#AndExp: BitorExp                                                        \
+#AndExp: AndExp '&&' BitorExp                            ? expLand       " +
+#"\
+#OrExp: AndExp                                                           \
+#OrExp: OrExp '||' AndExp                                ? expLor        " +
+#"\
+#CondExp: OrExp                                                          \
+#CondExp: OrExp '?' ListExp ':' CondExp                  ? expQuest      " +
+#"\
+#Exp: CondExp                                                            \
+#Exp: CondExp '=' Exp                                    ? expAssign     \
+#Exp: CondExp '+=' Exp                                   ? expAsgnAdd    \
+#Exp: CondExp '-=' Exp                                   ? expAsgnSub    \
+#Exp: CondExp '*=' Exp                                   ? expAsgnMult   \
+#Exp: CondExp '/=' Exp                                   ? expAsgnDiv    \
+#Exp: CondExp '%=' Exp                                   ? expAsgnMod    \
+#Exp: CondExp '<<=' Exp                                  ? expAsgnLShift \
+#Exp: CondExp '>>=' Exp                                  ? expAsgnRShift \
+#Exp: CondExp '&=' Exp                                   ? expAsgnAnd    \
+#Exp: CondExp '^=' Exp                                   ? expAsgnXor    \
+#Exp: CondExp '|=' Exp                                   ? expAsgnOr     " +
+#"\
+#ListExp: Exp                                                            \
+#ListExp: ListExp ',' Exp                                ? expComma      \
+#OptListExp:                                             ? opt           \
+#OptListExp: ListExp                                                     " +
+#"\
+#ArgList: Exp                                                            \
+#ArgList: ArgList ',' Exp                                                \
+#OptArgList:                                             ? noArguments   \
+#OptArgList: ArgList                                     ? arguments     \
+#OptArgList: ArgList '...'                               ? ellipsis      \
+#OptArgListComma:                                        ? list          \
+#OptArgListComma: ArgList                                ? noCommaList   \
+#OptArgListComma: ArgList ','                            ? noCommaList   " +
+#"\
+#AssocPair: Exp ':' Exp                                  ? parsed_0_2_   \
+#AssocList: AssocPair                                                    \
+#AssocList: AssocList ',' AssocPair                                      \
+#OptAssocListComma:                                      ? list          \
+#OptAssocListComma: AssocList                            ? noCommaList   \
+#OptAssocListComma: AssocList ','                        ? noCommaList   ",
+#
+#
+#DGD String:
+#unescaped = /[^\\\\]+/                                                  \
+#octal = /\\\\[0-7][0-7]?[0-7]?/                                         \
+#hexadecimal = /\\\\[xX][0-9a-fA-F][0-9a-fA-F]?/                         \
+#escaped = /\\\\./                                                       \
+#                                                                        \
+#String:                                                                 \
+#String: String Characters                                               \
+#Characters: unescaped                                                   \
+#Characters: octal                                       ? octal         \
+#Characters: hexadecimal                                 ? hexadecimal   \
+#Characters: escaped                                     ? escaped
