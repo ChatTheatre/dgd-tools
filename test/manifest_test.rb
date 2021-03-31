@@ -1,6 +1,7 @@
 require "test_helper"
+require "dgd-tools/manifest"
 
-class DGDToolsTest < Minitest::Test
+class DGDToolsManifestTest < Minitest::Test
     def initialize(*args)
         super
         @test_dir = __dir__

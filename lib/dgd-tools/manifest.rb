@@ -570,7 +570,6 @@ FILE_CONTENTS
                 end
 
                 ports = data.map { |p| [ "*", Integer(p) ] }
-                STDERR.puts "Arrayified: #{ports.inspect}"
                 return ports
             elsif data.is_a?(Integer)
                 return [ [ "*", data ] ]
