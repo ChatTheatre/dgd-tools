@@ -1,10 +1,10 @@
 grammar DGDGrammar
   rule source_file
-    inherit* top_level_decl*
+    ws inherit* ws top_level_decl* ws
   end
 
   rule inherit
-    ("private" WS)? "inherit" (ident)? ('object' WS)? string_exp ';'
+    ("private" WS)? "inherit" WS (ident WS)? ('object' WS)? string_exp ws ';' ws
   end
 
   rule top_level_decl
