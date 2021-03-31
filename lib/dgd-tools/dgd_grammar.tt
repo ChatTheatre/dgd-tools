@@ -24,6 +24,10 @@ grammar DGDGrammar
     '*/'
   end
 
+  rule preproc_hash_line
+    "\n"? "# " decimal " "+ simple_string (" "+ decimal)? "\n"
+  end
+
   rule simple_string
     '"' (
       !["\n\\]
@@ -63,7 +67,7 @@ grammar DGDGrammar
   end
 
   rule single_WS
-    [ \t\v\f\r\n] / c_comment
+    [ \t\v\f\r\n] / c_comment / preproc_hash_line
   end
 
   rule ws
