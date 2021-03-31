@@ -169,7 +169,7 @@ grammar DGDGrammar
   end
 
   rule declarator
-    data_declarator / function_declarator
+    function_declarator / data_declarator
   end
 
   rule declarators
@@ -238,7 +238,7 @@ grammar DGDGrammar
   end
 
   rule cond_exp
-    or_exp ws '?' ws list_exp ws ':' cond_exp / or_exp
+    or_exp ws '?' ws list_exp ws ':' ws cond_exp / or_exp
   end
 
   rule or_exp
@@ -314,9 +314,9 @@ grammar DGDGrammar
   end
 
   rule exp2
-    exp1 ((ws '[' ws list_exp ws ']') / (ws '[' ws (list_exp ws)? '..' ws (list_exp ws)? ']'))* /
     exp1 ws '->' ws ident ws '(' ws opt_arg_list ws ')' /
-    exp1 ws '<-' ws string_exp
+    exp1 ws '<-' ws string_exp /
+    exp1 ((ws '[' ws list_exp ws ']') / (ws '[' ws (list_exp ws)? '..' ws (list_exp ws)? ']'))*
   end
 
   rule exp1

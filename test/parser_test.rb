@@ -11,7 +11,7 @@ class DGDParserTest < Minitest::Test
 
   def test_random_parse_bits
     sf = DGD::Doc::SourceFile.new File.join(@dgd_source_dir, "inherit_test.c"), dgd_root: @dgd_source_dir
-    assert sf.parser.parse('v[.. 3]', root: "exp")
+    assert sf.parser.parse('static mapping decode_args(string argstr);', root: "data_decl")
   end
 
   def test_inherits_only
@@ -28,7 +28,8 @@ class DGDParserTest < Minitest::Test
   end
 
   def test_skotos_source_files
-    sf = DGD::Doc::SourceFile.new File.join(@skotos_dir, "lib/version.c"), dgd_root: @skotos_dir
+    DGD::Doc::SourceFile.new File.join(@skotos_dir, "lib/version.c"), dgd_root: @skotos_dir
+    #DGD::Doc::SourceFile.new File.join(@skotos_dir, "httpconn.c"), dgd_root: @skotos_dir
   end
 
 end

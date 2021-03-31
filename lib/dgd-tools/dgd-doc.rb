@@ -41,7 +41,7 @@ module DGD::Doc
         puts @parser.failure_line
         puts @parser.failure_column
 
-        puts "Preproc output was:#{preproc_output}\n\n\n"
+        #puts "Preproc output was:#{preproc_output}\n\n\n"
         raise "Parse error!"
       end
     end
