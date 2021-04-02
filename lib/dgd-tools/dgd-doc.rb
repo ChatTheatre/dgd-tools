@@ -5,8 +5,8 @@ module DGD; end
 module DGD::Doc
   DOC_COMMENT_REGEXP = %r{/\*\*(.*?)\*/}
   INHERIT_REGEXP = /(?<fulltext>(?<private>private\s+)?inherit(\s+(?<label>[a-zA-Z_][a-zA-Z_0-9]*))?(\s+object)?\s*(?<obname>.*?)\s*;)/
-  DATA_DECL_REGEXP = /(?<fulltext>(?<modifiers>(private|static|atomic|nomask|varargs)\s+)*(?<datatype>\w+\s*(\**\s*))(?<varname>[a-zA-Z_][a-zA-Z_0-9]*)\s*;)/
-  FUNC_DECL_REGEXP = /(?<fulltext>(?<modifiers>(private|static|atomic|nomask|varargs)\s+)*(?<returntype>\w+\s*(\**\s*))?(?<funcname>[a-zA-Z_][a-zA-Z_0-9]*)\s*\((?<args>.*)\)\s*(;|{))/
+  DATA_DECL_REGEXP = /(?<fulltext>(?<modifiers>(private|static|atomic|nomask|varargs)\s+)*(?<datatype>(int|float|string|object|mapping|mixed|void)\s*(\**\s*))(?<varname>[a-zA-Z_][a-zA-Z_0-9]*)\s*;)/
+  FUNC_DECL_REGEXP = /(?<fulltext>(?<modifiers>(private|static|atomic|nomask|varargs)\s+)*(?<returntype>(int|float|string|object|mapping|mixed|void)\s*(\**\s*))?(?<funcname>[a-zA-Z_][a-zA-Z_0-9]*)\s*\((?<args>.*)\)\s*(;|{))/
 
   class SourceFile
     attr_reader :inherits
@@ -49,11 +49,20 @@ module DGD::Doc
         @inherits.push({ fulltext: fulltext, private: !!priv, label: label, obname: obname })
       end
 
+
+
       locations = {} # maps from full item text to location in the source
       (doc_comments.map { |i| i[0] } +
         data_decls.map { |i| i[0] } +
         func_decls.map { |i| i[0] }).each do |item|
-        locations[item] = intermediate.index(item)
+
+        loc = intermediate.index(item)
+
+        # Hideous hack: only include global data and function declarations, not locals or func calls,
+        # by only including declarations after a newline or start-of-document.
+        next if loc != 0 && intermediate[loc - 1] != "\n"
+
+        locations[item] = loc
 
         # Everything messes up if something occurs exactly identically more than once, so we check.
         remaining_content = intermediate[(locations[item] + item.size)..-1]
@@ -83,12 +92,11 @@ module DGD::Doc
           next
         end
 
+        # Also allow us to skip a declaration, real or mistaken, with a /** skip */ comment
+        next if last_comment && last_comment.strip == "skip"
+
         if (idx = data_decls.index { |dd| dd[0] == item })
           # Item is a data declaration
-          # Hideous hack: only include global data declarations, not local variables,
-          # by only including data declarations after a newline or start-of-document.
-          next if loc != 0 && intermediate[loc - 1] != "\n"
-
           ft, raw_mods, raw_datatype, varname = *data_decls[idx]
           mods = (raw_mods || "").split(/\s+/)
           datatype = raw_datatype.gsub(/\s+/, "")
@@ -103,7 +111,7 @@ module DGD::Doc
         ft, raw_mods, raw_returntype, funcname, args_raw = *func_decls[idx]
 
         mods = (raw_mods || "").split(/\s+/)
-        returntype = raw_returntype.gsub(/\s+/, "")
+        returntype = (raw_returntype || "").gsub(/\s+/, "")
 
         # For each argument, turn all whitespace to a single space, and spaces around stars go
         # away - "int **v" becomes "int**v", while "mapping\n   baloo" becomes "mapping baloo"
