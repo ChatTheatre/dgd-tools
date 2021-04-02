@@ -5,8 +5,6 @@ require "treetop"
 require_relative "dgd_grammar_support"
 Treetop.load "#{__dir__}/dgd_grammar.tt"
 
-# Preprocessor incantation: cpp -C -I. -D__DGD__ name_of_file.c
-
 module DGD; end
 
 module DGD::Doc
@@ -14,7 +12,7 @@ module DGD::Doc
   class SourceFile
     attr_reader :parser
 
-    def initialize(path, dgd_root:)
+    def initialize(path, dgd_root:, preprocess: true, parse_contents: true)
       unless File.exist?(path)
         raise "No such source file for DGD::Doc::Sourcefile: #{path.inspect}"
       end
@@ -22,26 +20,32 @@ module DGD::Doc
       @parser = DGDGrammarParser.new
       @path = path
       @dgd_root = dgd_root
+      @preprocess = preprocess
 
-      parse_contents
+      do_parse_contents if parse_contents
     end
 
     private
 
-    def parse_contents
-      preproc_output = `cpp -C -I#{@dgd_root}/include -D__DGD__ #{@path}`
-      preproc_output.gsub!(/\n+/, "\n")  # The preprocessor often winds up leaving a lot of newlines from various sources
-      preproc_output.gsub!(/^# \d+ ".*"\w*\d*$/, "")
-      data = @parser.parse(preproc_output)
+    def do_parse_contents
+      intermediate = nil
+      if @preprocess
+        intermediate = `cpp -C -I#{@dgd_root}/include -D__DGD__ #{@path}`
+        intermediate.gsub!(/^# \d+ ".*"\s*\d*$/, "")
+        #intermediate.gsub!(/\n+/, "\n")  # The preprocessor often winds up leaving a lot of newlines from various sources
+      else
+        intermediate = File.read @path
+      end
+      data = @parser.parse(intermediate, root: "source_file")
       if data
         clean_tree(data)
         #puts data.inspect
       else
         puts @parser.failure_reason
-        puts @parser.failure_line
-        puts @parser.failure_column
 
-        #puts "Preproc output was:#{preproc_output}\n\n\n"
+        #puts "Preproc output was:#{intermediate}\n"
+        preproc_lines = intermediate.split("\n")
+        puts "Preprocessed failing line:\n#{preproc_lines[@parser.failure_line - 1]}\n"
         raise "Parse error!"
       end
     end

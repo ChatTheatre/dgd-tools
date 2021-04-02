@@ -21,53 +21,18 @@ grammar DGDGrammar
       !'*/'
       (. / "\n")
     )*
-    '*/'
+    '*/' <CComment>
   end
 
-  rule preproc_hash_line
-    "\n"? "# " decimal " "+ simple_string (" "+ decimal)? "\n"
-  end
-
-  rule simple_string
+  rule quoted_string
     '"' (
-      !["\n\\]
-      .
-      )*
-    '"' <StringLiteral>
-  end
-
-  rule complex_string
-    '"' ( ((!["\n\\] ) .) / . )+ '"' <StringLiteral>
-  end
-
-  rule simple_char
-    "'" ((!['\n\\]) .)+ "'" <CharLiteral>
-  end
-
-  rule complex_char
-    "'" (((!['\n\\]) .) / ("\\" .))+ "'" <CharLiteral>
-  end
-
-  rule decimal
-    [1-9] [0-9]* <DecimalLiteral>
-  end
-
-  rule octal
-    '0' [0-7]* <OctalLiteral>
-  end
-
-  rule hexadecimal
-    '0' [xX] [a-fA-F0-9]+ <HexadecimalLiteral>
-  end
-
-  rule float
-    ([0-9]+ "." [0-9]+ ([eE] [-+]? [0-9]+)?) <FloatLiteral> /
-    ("." [0-9]+ ([eE] [-+]? [0-9]+)?) <FloatLiteral> /
-    ([0-9]+ [eE] [-+]? [0-9]+) <FloatLiteral>
+      (!["\n\\] ) . /
+      "\\" .
+    )+ '"' <StringLiteral>
   end
 
   rule single_WS
-    [ \t\v\f\r\n] / c_comment / preproc_hash_line
+    [ \t\v\f\r\n] / c_comment
   end
 
   rule ws
@@ -78,13 +43,8 @@ grammar DGDGrammar
     single_WS+
   end
 
-  rule string
-    simple_string /
-    complex_string
-  end
-
   rule string_exp
-    string /
+    quoted_string /
     '(' ws composite_string ws ')'
   end
 
@@ -176,198 +136,16 @@ grammar DGDGrammar
     declarator (ws ',' ws declarator)*
   end
 
-  rule locals
-    (ws data_decl ws)*
-  end
-
-  rule statements
-    (ws statement ws)*
-  end
-
-  rule statement
-    'if' ws '(' ws list_exp ws ')' ws statement (WS 'else' statement)? /
-    'do' WS statement WS 'while' ws '(' ws list_exp ws ')' ws ';' /
-    'while' ws '(' ws list_exp ws ')' ws statement /
-    'for' ws '(' ws list_exp? ws ';' ws list_exp? ws ';' ws list_exp? ws ')' ws statement /
-    'rlimits' ws '(' ws list_exp ws ';' ws list_exp ws ')' ws compound_statement /
-    'catch' ws compound_statement ws ':' statement /
-    'catch' ws compound_statement /
-    'switch' ws '(' ws list_exp ws ')' ws compound_statement /
-    'case' WS exp ws ':' ws statement /
-    'case' WS exp ws '..' ws exp ws ':' statement /
-    'default' ws ':' ws statement /
-    'goto' WS ident ws ';' /
-    'break' ws ';' /
-    'continue' ws ';' /
-    'return' WS list_exp WS ';' /
-    'return' ws ';' /
-    ident ws ':' ws statement /  # label statement
-    list_exp /
-    compound_statement /
-    ';'
-  end
-
   rule compound_statement
-    '{' ws locals ws statements ws '}'
+    '{' func_to_end_brace
   end
 
-  rule function_call
-    ('::' ws function_name) /
-    (ident ws '::' ws function_name) /
-    function_name
-  end
-
-  rule list_exp
-    exp ws ',' ws list_exp /
-    exp
-  end
-
-  rule exp
-    cond_exp ws '=' ws exp /
-    cond_exp ws '+=' ws exp /
-    cond_exp ws '-=' ws exp /
-    cond_exp ws '*=' ws exp /
-    cond_exp ws '/=' ws exp /
-    cond_exp ws '%=' ws exp /
-    cond_exp ws '<<=' ws exp /
-    cond_exp ws '>>=' ws exp /
-    cond_exp ws '&=' ws exp /
-    cond_exp ws '^=' ws exp /
-    cond_exp ws '|=' ws exp /
-    cond_exp
-  end
-
-  rule cond_exp
-    or_exp ws '?' ws list_exp ws ':' ws cond_exp / or_exp
-  end
-
-  rule or_exp
-    and_exp ws '||' ws or_exp / and_exp
-  end
-
-  rule and_exp
-    bitor_exp ws '&&' ws and_exp / bitor_exp
-  end
-
-  rule bitor_exp
-    bitxor_exp ws '|' ws bitor_exp / bitxor_exp
-  end
-
-  rule bitxor_exp
-    bitand_exp ws '^' ws bitxor_exp / bitand_exp
-  end
-
-  rule bitand_exp
-    equ_exp ws '&' bitand_exp / equ_exp
-  end
-
-  rule equ_exp
-    rel_exp ws '==' ws equ_exp /
-    rel_exp ws '!=' ws equ_exp /
-    rel_exp
-  end
-
-  rule rel_exp
-    shift_exp ws '<' ws rel_exp /
-    shift_exp ws '>' ws rel_exp /
-    shift_exp ws '<=' ws rel_exp /
-    shift_exp ws '>=' ws rel_exp /
-    shift_exp
-  end
-
-  rule shift_exp
-    add_exp ws '<<' ws shift_exp /
-    add_exp ws '>>' ws shift_exp /
-    add_exp
-  end
-
-  rule add_exp
-    mult_exp ws '+' ws add_exp /
-    mult_exp ws '-' ws add_exp /
-    mult_exp
-  end
-
-  rule mult_exp
-    cast_exp ws '*' ws mult_exp /
-    cast_exp ws '/' ws mult_exp /
-    cast_exp ws '%' ws mult_exp /
-    cast_exp
-  end
-
-  rule cast_exp
-    '(' ws class_type ws stars ws ')' ws cast_exp /
-    prefix_exp
-  end
-
-  rule prefix_exp
-    '++' ws cast_exp /
-    '--' ws cast_exp /
-    '+' ws cast_exp /
-    '-' ws cast_exp /
-    '!' ws cast_exp /
-    '~' ws cast_exp /
-    postfix_exp
-  end
-
-  rule postfix_exp
-    exp2 (ws ('++' / '--'))?
-  end
-
-  rule exp2
-    exp1 ws '->' ws ident ws '(' ws opt_arg_list ws ')' /
-    exp1 ws '<-' ws string_exp /
-    exp1 ((ws '[' ws list_exp ws ']') / (ws '[' ws (list_exp ws)? '..' ws (list_exp ws)? ']'))*
-  end
-
-  rule exp1
-    # This works (for now) with function_call up front, but not when it was lower down...
-    # There's some kind of bad stuff going on with precedence that's causing parse failures.
-    # That's weird, since I assume it should try all combinations/precedences before giving up...
-    function_call ws '(' ws opt_arg_list ws ')' /
-    'catch' ws '(' list_exp ws ')' /
-    'new' (WS 'object')? ws string_exp (ws '(' ws opt_arg_list ws ')')? /
-    'nil' /
-    '(' ws '{' ws opt_arg_list_comma ws '}' ws ')' /
-    '(' ws '[' ws opt_assoc_list_comma ws ']' ws ')' /
-    '::' ws ident /
-    decimal /
-    octal /
-    hexadecimal /
-    simple_char /
-    complex_char /
-    float /
-    string /
-    ident /
-    '(' ws list_exp ws ')'
-  end
-
-  rule arg_list
-    exp ws ',' ws arg_list /
-    exp
-  end
-
-  rule opt_arg_list
-    arg_list ws '...' /
-    arg_list?
-  end
-
-  rule opt_arg_list_comma
-    arg_list ws ',' /
-    arg_list?
-  end
-
-  rule assoc_list
-    assoc_pair ws ',' ws assoc_list /
-    assoc_pair
-  end
-
-  rule assoc_pair
-    exp ws ':' ws exp
-  end
-
-  rule opt_assoc_list_comma
-    assoc_list ws ',' /
-    assoc_list?
+  # This attempts a non-greedy match by first grabbing up to the
+  # first end-curly-brace, then successively tries later and later
+  # curlies. Does it work?
+  rule func_to_end_brace
+    (![}] (. / "\n"))* '}' /
+    (![}] (. / "\n"))* '}' func_to_end_brace
   end
 
 end

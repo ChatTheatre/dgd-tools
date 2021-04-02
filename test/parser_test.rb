@@ -9,18 +9,25 @@ class DGDParserTest < Minitest::Test
     @skotos_dir = File.join(@dgd_source_dir, "skotos")
   end
 
-  def test_random_parse_bits
-    sf = DGD::Doc::SourceFile.new File.join(@dgd_source_dir, "inherit_test.c"), dgd_root: @dgd_source_dir
-    assert sf.parser.parse('static mapping decode_args(string argstr);', root: "data_decl")
+  def test_quoted_string_parsing
+    sf = DGD::Doc::SourceFile.new File.join(@dgd_source_dir, "inherit_test.c"), dgd_root: @dgd_source_dir, parse_contents: false
+    assert sf.parser.parse '"bobo"', root: "quoted_string"
+    assert sf.parser.parse '"bobo\\\\"', root: "quoted_string"
+    assert sf.parser.parse '"bobo\\""', root: "quoted_string"
   end
+
+  #def test_random_parse_bits
+  #  sf = DGD::Doc::SourceFile.new File.join(@dgd_source_dir, "inherit_test.c"), dgd_root: @dgd_source_dir, parse_contents: false
+  #  assert sf.parser.parse('inherit access "/include/api/access";', root: "inherit")
+  #end
 
   def test_inherits_only
     DGD::Doc::SourceFile.new File.join(@dgd_source_dir, "inherit_test.c"), dgd_root: @dgd_source_dir
   end
 
-  def test_functions
-    DGD::Doc::SourceFile.new File.join(@dgd_source_dir, "function_test.c"), dgd_root: @dgd_source_dir
-  end
+  #def test_functions
+  #  DGD::Doc::SourceFile.new File.join(@dgd_source_dir, "function_test.c"), dgd_root: @dgd_source_dir
+  #end
 
   def test_trivial_preprocessor
     # This file, if used alone, preprocesses to nothing since it just defines macros.

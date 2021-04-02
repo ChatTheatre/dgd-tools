@@ -5,32 +5,27 @@
 #  end
 #end
 
-class DataDecl < Treetop::Runtime::SyntaxNode
-end
+module DGDGrammar
 
-class FuncDecl < Treetop::Runtime::SyntaxNode
-end
+  class TopDecl < Treetop::Runtime::SyntaxNode
+  end
 
-class Inherit < Treetop::Runtime::SyntaxNode
-end
+  class DataDecl < TopDecl
+  end
 
-class Identifier < Treetop::Runtime::SyntaxNode
-end
+  class FuncDecl < TopDecl
+  end
 
-class DecimalLiteral < Treetop::Runtime::SyntaxNode
-end
+  class Inherit < Treetop::Runtime::SyntaxNode
+  end
 
-class OctalLiteral < Treetop::Runtime::SyntaxNode
-end
+  class Identifier < Treetop::Runtime::SyntaxNode
+  end
 
-class HexadecimalLiteral < Treetop::Runtime::SyntaxNode
-end
+  class StringLiteral < Treetop::Runtime::SyntaxNode
+  end
 
-class FloatLiteral < Treetop::Runtime::SyntaxNode
-end
+  class CComment < Treetop::Runtime::SyntaxNode
+  end
 
-class StringLiteral < Treetop::Runtime::SyntaxNode
-end
-
-class CharLiteral < Treetop::Runtime::SyntaxNode
 end
