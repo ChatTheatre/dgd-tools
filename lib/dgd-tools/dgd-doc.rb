@@ -64,7 +64,7 @@ module DGD::Doc
 
         locations[item] = loc
 
-        # Everything messes up if something occurs exactly identically more than once, so we check.
+        # Our current approach messes up if something occurs exactly identically more than once, so we check.
         remaining_content = intermediate[(locations[item] + item.size)..-1]
         if remaining_content[item]
           raise "An item occurs identically, more than once in the input! (repeated item: #{item.inspect})"
@@ -78,8 +78,8 @@ module DGD::Doc
       end
       locs_to_items = locations.invert
 
-      @data_decls = []
-      @func_decls = []
+      @data_decls = {}
+      @func_decls = {}
       last_comment = nil
 
       locs_to_items.each do |loc, item|
@@ -100,7 +100,9 @@ module DGD::Doc
           ft, raw_mods, raw_datatype, varname = *data_decls[idx]
           mods = (raw_mods || "").split(/\s+/)
           datatype = raw_datatype.gsub(/\s+/, "")
-          @data_decls.push({ comment: last_comment, full_text: ft, modifiers: mods, type: datatype, name: varname })
+
+          raise "Two pieces of global data shouldn't have the same name! name: #{varname.inspect}" if @data_decls[varname]
+          @data_decls[varname] = { comment: last_comment, full_text: ft, modifiers: mods, type: datatype, name: varname }
           last_comment = nil
           next
         end
@@ -117,7 +119,17 @@ module DGD::Doc
         # away - "int **v" becomes "int**v", while "mapping\n   baloo" becomes "mapping baloo"
         args = args_raw.split(",").map { |arg| arg.gsub(/\s+/, " ").gsub(/ ?\* ?/, "*") }
 
-        @func_decls.push({ comment: last_comment, full_text: ft, modifiers: mods, type: returntype, name: funcname, args: args })
+        # If there's two of the same function name, that normally means a prototype and a definition.
+        # We're doing little enough parsing that I don't (yet) want to merge them or check for
+        # agreement.
+        if @func_decls[funcname]
+          if last_comment
+            puts "Warning: function #{funcname.inspect} has multiple DGD-doc comments in file #{@path.inspect}!" if @func_decls[funcname][:comment]
+          else
+            last_comment = @func_decls[funcname][:comment]
+          end
+        end
+        @func_decls[funcname] = { comment: last_comment, full_text: ft, modifiers: mods, type: returntype, name: funcname, args: args }
         last_comment = nil
       end
     end
