@@ -15,7 +15,7 @@ class DGDParserTest < Minitest::Test
 
   def test_inherits_only
     sf = DGD::Doc::SourceFile.new File.join(@dgd_source_dir, "inherit_test.c"), dgd_root: @dgd_source_dir
-    assert_equal ["access", nil, "label_goes_here", nil], sf.inherits.map { |inh| inh[:label] }, "Can't correctly match all labels in inherit_test.c"
+    assert_equal ["access", nil, "label_goes_here", nil], sf.inherits.map(&:label), "Can't correctly match all labels in inherit_test.c"
   end
 
   def test_functions

@@ -1,17 +1,28 @@
 require "dgd-tools/version"
+require "dgd-tools/dgd-doc-support"
+
+require "kramdown"
 
 module DGD; end
 
 module DGD::Doc
-  DOC_COMMENT_REGEXP = %r{/\*\*(.*?)\*/}
+  DOC_COMMENT_REGEXP = %r{(?<fulltext>/\*\*(?<body>(.|\n)*?)\*/)}
   INHERIT_REGEXP = /(?<fulltext>(?<private>private\s+)?inherit(\s+(?<label>[a-zA-Z_][a-zA-Z_0-9]*))?(\s+object)?\s*(?<obname>.*?)\s*;)/
   DATA_DECL_REGEXP = /(?<fulltext>(?<modifiers>(private|static|atomic|nomask|varargs)\s+)*(?<datatype>(int|float|string|object|mapping|mixed|void)\s*(\**\s*))(?<varname>[a-zA-Z_][a-zA-Z_0-9]*)\s*;)/
   FUNC_DECL_REGEXP = /(?<fulltext>(?<modifiers>(private|static|atomic|nomask|varargs)\s+)*(?<returntype>(int|float|string|object|mapping|mixed|void)\s*(\**\s*))?(?<funcname>[a-zA-Z_][a-zA-Z_0-9]*)\s*\((?<args>.*)\)\s*(;|{))/
+
+  TAG_LINE_REGEXP = /@(?<tag>[A-Za-z_]{3,}) (?<contents>.*)$/
+
+  # Want to be inspired? There's a great set of tags in Yard: https://github.com/lsegal/yard/blob/main/lib/yard/tags/library.rb
+  # Search for define_tag.
+
+  DOC_TAGS = [ "param", "return", "example", "deprecated", "note", "private", "raise" ]
 
   class SourceFile
     attr_reader :inherits
     attr_reader :data_decls
     attr_reader :func_decls
+    attr_reader :fully_parsed
 
     def initialize(path, dgd_root:, preprocess: false, parse_contents: true)
       unless File.exist?(path)
@@ -21,12 +32,20 @@ module DGD::Doc
       @path = path
       @dgd_root = dgd_root
       @preprocess = preprocess
+      @fully_parsed = false
 
       do_parse_contents if parse_contents
     end
 
     private
 
+    # This large method is basically the interface between the complex regular expressions
+    # above and the more structured content of @inherits, @func_decls and @data_decls.
+    # It could be broken up further, but it's hard to avoid entanglement with the regular
+    # expressions.
+    #
+    # Separable concerns like the format of the comments themselves should be extracted
+    # into their own separate methods, keeping this one as the tarpit of regexp handling.
     def do_parse_contents
       intermediate = nil
       if @preprocess
@@ -43,13 +62,11 @@ module DGD::Doc
       data_decls = intermediate.scan DATA_DECL_REGEXP
       func_decls = intermediate.scan FUNC_DECL_REGEXP
 
-      @inherits = []
-      inherits.each do |inh|
+      @inherits = inherits.map do |inh|
         fulltext, priv, label, obname = *inh
-        @inherits.push({ fulltext: fulltext, private: !!priv, label: label, obname: obname })
+        loc = intermediate.index(fulltext)
+        Inherit.new loc: loc, source: self, private: !!priv, label: label, object_name: obname
       end
-
-
 
       locations = {} # maps from full item text to location in the source
       (doc_comments.map { |i| i[0] } +
@@ -82,38 +99,47 @@ module DGD::Doc
       @func_decls = {}
       last_comment = nil
 
-      locs_to_items.each do |loc, item|
-        if doc_comments.any? { |dc| dc[0] == item }
+      locs_to_items.keys.sort.each do |loc|
+        item = locs_to_items[loc]
+        if (idx = doc_comments.index { |dd| dd[0] == item })
           # Item is a comment
           if last_comment
             puts "Warning: comment without matching data or function declaration! #{last_comment.inspect}"
           end
-          last_comment = item
+
+          _, comment_block = *doc_comments[idx]
+
+          last_comment = comment_block
           next
         end
 
         # Also allow us to skip a declaration, real or mistaken, with a /** skip */ comment
-        next if last_comment && last_comment.strip == "skip"
+        if last_comment && last_comment.strip == "skip"
+          last_comment = nil
+          next
+        end
 
         if (idx = data_decls.index { |dd| dd[0] == item })
           # Item is a data declaration
           ft, raw_mods, raw_datatype, varname = *data_decls[idx]
           mods = (raw_mods || "").split(/\s+/)
           datatype = raw_datatype.gsub(/\s+/, "")
+          comment = comment_text_to_structured(last_comment)
 
           raise "Two pieces of global data shouldn't have the same name! name: #{varname.inspect}" if @data_decls[varname]
-          @data_decls[varname] = { comment: last_comment, full_text: ft, modifiers: mods, type: datatype, name: varname }
+          @data_decls[varname] = { comment: comment, full_text: ft, modifiers: mods, type: datatype, name: varname }
           last_comment = nil
           next
         end
 
         # Otherwise it had better be a function declaration
         idx = func_decls.index { |fd| fd[0] == item }
-        raise "Can't figure out type of item! #{item.inspect}!" unless idx
+        raise "Internal error: can't figure out type of item! #{item.inspect}!" unless idx
         ft, raw_mods, raw_returntype, funcname, args_raw = *func_decls[idx]
 
         mods = (raw_mods || "").split(/\s+/)
         returntype = (raw_returntype || "").gsub(/\s+/, "")
+        comment = comment_text_to_structured(last_comment)
 
         # For each argument, turn all whitespace to a single space, and spaces around stars go
         # away - "int **v" becomes "int**v", while "mapping\n   baloo" becomes "mapping baloo"
@@ -129,10 +155,30 @@ module DGD::Doc
             last_comment = @func_decls[funcname][:comment]
           end
         end
-        @func_decls[funcname] = { comment: last_comment, full_text: ft, modifiers: mods, type: returntype, name: funcname, args: args }
+        @func_decls[funcname] = { comment: comment, full_text: ft, modifiers: mods, type: returntype, name: funcname, args: args }
         last_comment = nil
       end
+
+      @fully_parsed = true
     end
 
+    def comment_text_to_structured(comment_text)
+      if !comment_text
+        return nil
+      end
+      all_lines = comment_text.split("\n").map { |line| line.gsub(/^\s*#\s/, "") }
+      tag_lines, nontag_lines = all_lines.partition { |line| line =~ TAG_LINE_REGEXP }
+
+      tags = []
+      tag_lines.each do |line|
+        m = TAG_LINE_REGEXP.match(line)
+        raise("Internal error: can't re-match TAG_LINE_REGEXP!") unless m
+        tag, contents = *m.captures
+        tags.push [ tag, contents ]
+      end
+
+      htmlified = Kramdown::Document.new(nontag_lines.join("\n")).to_html
+      return({ orig: comment_text, tags: tags, html_body: htmlified })
+    end
   end
 end
