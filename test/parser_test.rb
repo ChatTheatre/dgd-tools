@@ -21,6 +21,7 @@ class DGDParserTest < Minitest::Test
   def test_functions
     sf = DGD::Doc::SourceFile.new File.join(@dgd_source_dir, "function_test.c"), dgd_root: @dgd_source_dir
     assert_equal ["local_vars_should_parse", "test_args"], sf.func_decls.keys
+    assert_equal ["static"], sf.func_decls["test_args"].modifiers
   end
 
   def test_trivial_preprocessor

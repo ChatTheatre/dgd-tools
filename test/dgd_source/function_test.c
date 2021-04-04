@@ -12,7 +12,7 @@ int v;
   * @param clone not a real argument, though.
   * @see local_vars_should_parse
   */
-float test_args(varargs int clone) {
+static float test_args(varargs int clone) {
    string v;
    object here_it_is;
 
