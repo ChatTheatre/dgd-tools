@@ -127,7 +127,8 @@ module DGD::Doc
           comment = comment_text_to_structured(last_comment)
 
           raise "Two pieces of global data shouldn't have the same name! name: #{varname.inspect}" if @data_decls[varname]
-          @data_decls[varname] = { comment: comment, full_text: ft, modifiers: mods, type: datatype, name: varname }
+          var_item = Variable.new loc: loc, source: self, comment: comment, full_text: ft, modifiers: mods, type: datatype, name: varname
+          @data_decls[varname] = var_item
           last_comment = nil
           next
         end
@@ -135,10 +136,10 @@ module DGD::Doc
         # Otherwise it had better be a function declaration
         idx = func_decls.index { |fd| fd[0] == item }
         raise "Internal error: can't figure out type of item! #{item.inspect}!" unless idx
-        ft, raw_mods, raw_returntype, funcname, args_raw = *func_decls[idx]
+        ft, raw_mods, raw_return_type, func_name, args_raw = *func_decls[idx]
 
         mods = (raw_mods || "").split(/\s+/)
-        returntype = (raw_returntype || "").gsub(/\s+/, "")
+        return_type = (raw_return_type || "").gsub(/\s+/, "")
         comment = comment_text_to_structured(last_comment)
 
         # For each argument, turn all whitespace to a single space, and spaces around stars go
@@ -148,14 +149,15 @@ module DGD::Doc
         # If there's two of the same function name, that normally means a prototype and a definition.
         # We're doing little enough parsing that I don't (yet) want to merge them or check for
         # agreement.
-        if @func_decls[funcname]
+        if @func_decls[func_name]
           if last_comment
-            puts "Warning: function #{funcname.inspect} has multiple DGD-doc comments in file #{@path.inspect}!" if @func_decls[funcname][:comment]
+            puts "Warning: function #{func_name.inspect} has multiple DGD-doc comments in file #{@path.inspect}!" if @func_decls[func_name][:comment]
           else
-            last_comment = @func_decls[funcname][:comment]
+            last_comment = @func_decls[func_name].comment
           end
         end
-        @func_decls[funcname] = { comment: comment, full_text: ft, modifiers: mods, type: returntype, name: funcname, args: args }
+        fd = Method.new loc: loc, source: self, comment: comment, full_text: ft, modifiers: mods, return_type: return_type, name: func_name, args: args
+        @func_decls[func_name] = fd
         last_comment = nil
       end
 
