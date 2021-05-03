@@ -148,7 +148,8 @@ module DGD::Manifest
                 FileUtils.mkdir_p(repos_dir) # Links to repos in manifest
 
                 @manifest_file.ordered_specs.each do |spec|
-                    FileUtils.ln_s(spec.source.local_dir, File.join(".repos", spec.name))
+                    # force:true prevents getting an exception if the file exists
+                    FileUtils.ln_s(spec.source.local_dir, File.join(".repos", spec.name), force: true)
                 end
 
                 assembly_operations(location, verbose: verbose).each do |sd_hash|
