@@ -128,6 +128,8 @@ module DGD::Manifest
 
         def assemble_app(location, verbose:)
             Dir[File.join(dgd_root(location), "*")].each { |dir| FileUtils.rm_rf dir }
+            Dir[File.join(dgd_root(location), "state", "*")].each { |dir| FileUtils.rm_rf dir }
+            Dir[File.join(dgd_root(location), ".repos", "*")].each { |dir| FileUtils.rm_f dir }
 
             write_app_files(location, verbose: verbose)
         end
@@ -142,6 +144,12 @@ module DGD::Manifest
             Dir.chdir(location) do
                 write_config_file("#{location}/dgd.config")
                 FileUtils.mkdir_p("#{location}/state") # Statedir for statedumps, editor files, etc.
+                repos_dir = "#{location}/.repos"
+                FileUtils.mkdir_p(repos_dir) # Links to repos in manifest
+
+                @manifest_file.ordered_specs.each do |spec|
+                    FileUtils.ln_s(spec.source.local_dir, File.join(".repos", spec.name))
+                end
 
                 assembly_operations(location, verbose: verbose).each do |sd_hash|
                     to_path = "#{dgd_root(location)}/#{sd_hash[:to]}"
@@ -429,6 +437,13 @@ module DGD::Manifest
                 .root
                 dgd.config
                 state/*
+                wafer
+                websocket-to-tcp-tunnel
+                dgd
+                log/*
+                skotos.database
+                skotos.database.old
+                .repos/**
             FILE_CONTENTS
         end
 
