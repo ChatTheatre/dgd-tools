@@ -40,6 +40,12 @@ NOTE: "dgd-manifest install" will delete any extra files you may have created in
 
 That fully-assembled DGD directory is named ".root". To run your dgd server, type "dgd-manifest server".
 
+## Creating a New DGD Manifest App
+
+You can type "dgd-manifest new my_app_name" to create a new application using the appropriate DGD manifest structure. This is an easy way to set up an appropriate .gitignore file and similar.
+
+You can, of course, do the same without the command if you like.
+
 ## Using DGD Manifest with your DGD Application
 
 Your app will need a dgd.manifest file, which is a lot like NPM's package.json file.
