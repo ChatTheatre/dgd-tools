@@ -20,7 +20,7 @@ You can find example "goods" (library) files under the "goods" subdirectory of t
 
 ## WOE Objects and skotos-xml-diff
 
-SkotOS-based games use an XML format for in-game objects called WOE, which is [documented in SkotOS-Doc](https://ChatTheatre.github.io/SkotOS-Doc). The skotos-xml-diff utility will diff between WOE objects or directories of WOE objects.
+SkotOS-based games use an XML format for in-game objects ("/base/obj/thing"), which is [documented in SkotOS-Doc](https://ChatTheatre.github.io/SkotOS-Doc). The skotos-xml-diff utility will diff between Things or directories of Things.
 
 See SkotOS-Doc for more detail about how this can be used with a SkotOS game.
 
@@ -30,15 +30,15 @@ Run "skotos-xml-diff --help" for a list of options. You can tell it to ignore wh
 
 You would normally install DGDTools directly: `gem install dgd-tools`.
 
-It's possible to add it to a Ruby's application's Gemfile. Ordinarily you wouldn't.
+If you have a Ruby Gemfile or gems.rb that uses it, you can "bundle install" as normal.
 
 ## Usage
 
-If you have a DGD application that uses DGD Manifest, run `dgd-manifest install` to download its dependencies and create a fully-assembled DGD directory for it. You can also `dgd-manifest test` to make sure its dependencies are downloaded and satisfied without building an application directory.
+If you have a DGD application that uses DGD Manifest, run `dgd-manifest install` to download its dependencies and create a clean, fully-assembled DGD directory for it. You can also `dgd-manifest test` to make sure its dependencies are downloaded and satisfied without building an application directory. After the initial install, "dgd-manifest update" will avoid deleting any files you may have added.
+
+NOTE: "dgd-manifest install" will delete any extra files you may have created in the DGD root. "dgd-manifest update" will not. Neither of these is always the right answer.
 
 That fully-assembled DGD directory is named ".root". To run your dgd server, type "dgd-manifest server".
-
-If you update files in your root and want to update files under the generated root directory, use "dgd-manifest update".
 
 ## Using DGD Manifest with your DGD Application
 
@@ -93,6 +93,12 @@ Here's what those look like:
     }
 }
 ```
+
+Fields in the Goods file are the same as fields in unbundled_goods.
+
+## Implementation Limits
+
+Right now it's not possible to use the same repo multiple times with different branches. So for instance, you can't use one branch of ChatTheatre/SkotOS for your main library while using a different branch of it for some other library. For this reason, it's recommended that you extract smaller libraries into their own repositories rather than keeping multiple libraries in the same repo.
 
 ## Development
 
