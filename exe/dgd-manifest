@@ -19,6 +19,7 @@ Available subcommands:
 
 Available options:
 BANNER
+
     opt :verbose, "Print verbose output where available"
     stop_on SUB_COMMANDS
 end

@@ -128,6 +128,7 @@ module DGD::Manifest
 
         def assemble_app(location, verbose:)
             Dir[File.join(dgd_root(location), "*")].each { |dir| FileUtils.rm_rf dir }
+            Dir[File.join(dgd_root(location), ".repos", "*")].each { |dir| FileUtils.rm_f dir }
             Dir[File.join(dgd_root(location), "state", "*")].each { |dir| FileUtils.rm_rf dir }
 
             write_app_files(location, verbose: verbose)
